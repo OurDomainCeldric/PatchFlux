@@ -45,7 +45,10 @@ def normalize_url(url: str) -> str:
     kept_query.sort()
     query = urlencode(kept_query)
 
-    path = re.sub(r"/+", "/", parts.path) or "/"
+    # Lowercase the path as well: publishers we ingest serve articles at a
+    # single canonical case, and dedup should treat ``/A`` and ``/a`` as the
+    # same resource. Paths are only *technically* case-sensitive per RFC 3986.
+    path = re.sub(r"/+", "/", parts.path.lower()) or "/"
     # Strip trailing slash except for root
     if len(path) > 1 and path.endswith("/"):
         path = path[:-1]
