@@ -5,7 +5,7 @@ pubDate only, no excerpts or article bodies stored.
 """
 from __future__ import annotations
 
-from sources._rss import fetch_and_parse
+from sources._rss import MICROSOFT_TITLE_KEYWORDS, fetch_and_parse
 from sources.base import SourceAdapter, SourceFetchResult
 
 
@@ -13,32 +13,8 @@ class BleepingComputerAdapter(SourceAdapter):
     source_id = "bleeping-computer"
     source_name = "BleepingComputer"
     feed_url = "https://www.bleepingcomputer.com/feed/"
-    # Filter to the project's Microsoft/IT scope; keyword set mirrors the
-    # heise adapter plus generic security terms already classified downstream.
-    title_keywords: tuple[str, ...] = (
-        "microsoft",
-        "windows",
-        "azure",
-        "office",
-        "microsoft 365",
-        "m365",
-        "teams",
-        "outlook",
-        "exchange",
-        "sharepoint",
-        "onedrive",
-        "intune",
-        "entra",
-        "defender",
-        "sentinel",
-        "copilot",
-        "github",
-        ".net",
-        "visual studio",
-        "powershell",
-        "hyper-v",
-        "wsl",
-    )
+    # Filter to the project's Microsoft/IT scope using the shared keyword list.
+    title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
         self,

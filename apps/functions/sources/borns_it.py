@@ -5,7 +5,7 @@ Only metadata is stored; see LEGAL.md.
 """
 from __future__ import annotations
 
-from sources._rss import fetch_and_parse
+from sources._rss import MICROSOFT_TITLE_KEYWORDS, fetch_and_parse
 from sources.base import SourceAdapter, SourceFetchResult
 
 
@@ -13,6 +13,9 @@ class BornsITAdapter(SourceAdapter):
     source_id = "borns-it"
     source_name = "Borns IT- und Windows-Blog"
     feed_url = "https://www.borncity.com/blog/feed/"
+    # The blog covers general IT news too (Linux, Apple, consumer electronics).
+    # Restrict to Microsoft-scoped titles.
+    title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
         self,
@@ -29,4 +32,5 @@ class BornsITAdapter(SourceAdapter):
             etag=etag,
             last_modified=last_modified,
             default_language="de",
+            title_keywords=self.title_keywords,
         )

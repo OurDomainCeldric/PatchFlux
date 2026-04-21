@@ -44,11 +44,12 @@ def _sample_payload() -> bytes:
 
 def test_parse_kev_payload_happy_path() -> None:
     items = parse_kev_payload(_sample_payload())
-    assert len(items) == 2
+    # The Fortinet entry is filtered out because PatchFlux is Microsoft-scoped.
+    assert len(items) == 1
     titles = [i.title for i in items]
     assert all(t.startswith("KEV: ") for t in titles)
     assert any("CVE-2026-11111" in t for t in titles)
-    assert any("CVE-2026-22222" in t for t in titles)
+    assert not any("CVE-2026-22222" in t for t in titles)
     # All items link to the NVD detail page.
     for item in items:
         assert str(item.canonical_url).startswith("https://nvd.nist.gov/vuln/detail/CVE-")
@@ -57,14 +58,56 @@ def test_parse_kev_payload_happy_path() -> None:
 
 
 def test_parse_kev_payload_sorted_newest_first() -> None:
-    items = parse_kev_payload(_sample_payload())
-    # dateAdded 2026-04-20 comes before 2026-04-18.
+    payload = {
+        "vulnerabilities": [
+            {
+                "cveID": "CVE-2026-A",
+                "vendorProject": "Microsoft",
+                "product": "Windows",
+                "vulnerabilityName": "A",
+                "dateAdded": "2026-04-20",
+            },
+            {
+                "cveID": "CVE-2026-B",
+                "vendorProject": "Microsoft",
+                "product": "Exchange",
+                "vulnerabilityName": "B",
+                "dateAdded": "2026-04-18",
+            },
+        ]
+    }
+    items = parse_kev_payload(json.dumps(payload).encode("utf-8"))
+    assert len(items) == 2
     assert items[0].published_at >= items[1].published_at
 
 
 def test_parse_kev_payload_skips_malformed() -> None:
     items = parse_kev_payload(_sample_payload())
     assert all("CVE-2026-33333" not in i.title for i in items)
+
+
+def test_parse_kev_payload_filters_non_microsoft_vendors() -> None:
+    payload = {
+        "vulnerabilities": [
+            {
+                "cveID": "CVE-2026-99999",
+                "vendorProject": "Fortinet",
+                "product": "FortiOS",
+                "vulnerabilityName": "Authentication bypass",
+                "dateAdded": "2026-04-18",
+            },
+            {
+                "cveID": "CVE-2026-88888",
+                "vendorProject": "Cisco",
+                "product": "IOS XE",
+                "vulnerabilityName": "Privilege escalation",
+                "dateAdded": "2026-04-17",
+            },
+        ]
+    }
+    items = parse_kev_payload(json.dumps(payload).encode("utf-8"))
+    assert items == []
+
 
 
 def test_adapter_metadata_is_stable() -> None:

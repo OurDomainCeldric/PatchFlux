@@ -5,7 +5,7 @@ headline + URL + pubDate only, no excerpts or article bodies stored.
 """
 from __future__ import annotations
 
-from sources._rss import fetch_and_parse
+from sources._rss import MICROSOFT_TITLE_KEYWORDS, fetch_and_parse
 from sources.base import SourceAdapter, SourceFetchResult
 
 
@@ -13,6 +13,9 @@ class KrebsAdapter(SourceAdapter):
     source_id = "krebs"
     source_name = "Krebs on Security"
     feed_url = "https://krebsonsecurity.com/feed/"
+    # PatchFlux is Microsoft-scoped; Krebs covers general US security
+    # journalism, so filter to our topical scope by title keyword.
+    title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
         self,
@@ -29,4 +32,5 @@ class KrebsAdapter(SourceAdapter):
             etag=etag,
             last_modified=last_modified,
             default_language="en",
+            title_keywords=self.title_keywords,
         )

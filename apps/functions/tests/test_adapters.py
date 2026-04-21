@@ -52,3 +52,26 @@ def test_feed_urls_look_reasonable():
         url = cls.feed_url
         assert url.startswith("https://"), f"{cls.__name__}: non-https feed URL"
         assert " " not in url, f"{cls.__name__}: whitespace in feed URL"
+
+
+def test_general_news_adapters_declare_microsoft_keyword_filter():
+    """Adapters for general (non-Microsoft-first) feeds must filter by title
+    keywords so PatchFlux stays Microsoft-scoped. See AGENTS.md."""
+    from sources._rss import MICROSOFT_TITLE_KEYWORDS
+
+    general_news = [
+        HeiseAdapter,
+        BornsITAdapter,
+        BleepingComputerAdapter,
+        KrebsAdapter,
+        CISAAdvisoriesAdapter,
+    ]
+    for cls in general_news:
+        kws = getattr(cls, "title_keywords", None)
+        assert kws, f"{cls.__name__}: missing title_keywords"
+        assert "microsoft" in kws, f"{cls.__name__}: no 'microsoft' keyword"
+        # Every general-news adapter reuses the shared list (allows overrides,
+        # but we expect full coverage today).
+        assert set(MICROSOFT_TITLE_KEYWORDS).issubset(set(kws)), (
+            f"{cls.__name__}: title_keywords missing shared Microsoft terms"
+        )

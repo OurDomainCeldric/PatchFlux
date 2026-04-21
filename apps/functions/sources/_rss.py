@@ -12,6 +12,60 @@ from sources.base import SourceFetchResult
 
 log = logging.getLogger(__name__)
 
+# Shared Microsoft / IT-scope keyword gate. Used by general-news adapters
+# (heise, bleeping_computer, krebs, cisa, borns-it, cisa-kev) to filter out
+# non-Microsoft items before they enter storage. Matching is case-insensitive
+# against the item title only — we never inspect article bodies.
+MICROSOFT_TITLE_KEYWORDS: tuple[str, ...] = (
+    "microsoft",
+    "windows",
+    "azure",
+    "office",
+    "microsoft 365",
+    "m365",
+    "office 365",
+    "teams",
+    "outlook",
+    "exchange",
+    "sharepoint",
+    "onedrive",
+    "intune",
+    "entra",
+    "azure ad",
+    "active directory",
+    "defender",
+    "sentinel",
+    "purview",
+    "copilot",
+    "xbox",
+    "github",
+    ".net",
+    "dotnet",
+    "visual studio",
+    "vscode",
+    "vs code",
+    "powershell",
+    "hyper-v",
+    "hyperv",
+    "wsl",
+    "sql server",
+    "power platform",
+    "power automate",
+    "power apps",
+    "power bi",
+    "dynamics 365",
+    "dynamics365",
+    "fabric",
+    "viva",
+    "loop",
+    "sysinternals",
+    "edge browser",
+    "microsoft edge",
+    "bitlocker",
+    "winget",
+    "patch tuesday",
+)
+
 # Simple keyword -> product mapping. Matching is case-insensitive against the
 # item title only (never against article body, which we do not store).
 PRODUCT_KEYWORDS: dict[str, tuple[str, ...]] = {

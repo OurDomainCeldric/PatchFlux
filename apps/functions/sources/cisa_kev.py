@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 import httpx
 
 from models.news_item import NewsItem
+from sources._rss import MICROSOFT_TITLE_KEYWORDS
 from sources.base import SourceAdapter, SourceFetchResult
 
 log = logging.getLogger(__name__)
@@ -23,6 +24,21 @@ log = logging.getLogger(__name__)
 _FEED_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 # Limit to the newest N entries per poll; the feed holds 1000+ historical CVEs.
 _MAX_ITEMS = 200
+
+# PatchFlux is Microsoft-scoped. KEV lists advisories for all vendors (Fortinet,
+# Cisco, Ivanti, Apple, \u2026) so we filter entries to those whose vendor /
+# product / vulnerability-name mention a Microsoft product or platform.
+_KEV_KEYWORDS: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
+
+
+def _is_microsoft_relevant(entry: dict) -> bool:
+    haystack = " ".join(
+        str(entry.get(key) or "")
+        for key in ("vendorProject", "product", "vulnerabilityName")
+    ).lower()
+    if not haystack.strip():
+        return False
+    return any(k in haystack for k in _KEV_KEYWORDS)
 
 
 def _nvd_url(cve_id: str) -> str:
@@ -50,9 +66,14 @@ def parse_kev_payload(body: bytes) -> list[NewsItem]:
     data = json.loads(body)
     vulns = data.get("vulnerabilities") or []
     items: list[NewsItem] = []
-    # Sort newest-first by dateAdded and cap to _MAX_ITEMS.
+    # Sort newest-first by dateAdded, filter to Microsoft-relevant entries, and
+    # cap to _MAX_ITEMS.
     vulns_sorted = sorted(
-        (v for v in vulns if v.get("dateAdded") and v.get("cveID")),
+        (
+            v
+            for v in vulns
+            if v.get("dateAdded") and v.get("cveID") and _is_microsoft_relevant(v)
+        ),
         key=lambda v: v.get("dateAdded", ""),
         reverse=True,
     )[:_MAX_ITEMS]

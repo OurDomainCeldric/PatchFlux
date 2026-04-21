@@ -5,7 +5,7 @@ See LEGAL.md.
 """
 from __future__ import annotations
 
-from sources._rss import fetch_and_parse
+from sources._rss import MICROSOFT_TITLE_KEYWORDS, fetch_and_parse
 from sources.base import SourceAdapter, SourceFetchResult
 
 
@@ -13,6 +13,10 @@ class CISAAdvisoriesAdapter(SourceAdapter):
     source_id = "cisa-advisories"
     source_name = "CISA Advisories"
     feed_url = "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+    # CISA publishes advisories for many vendors (ICS, Fortinet, Cisco, …).
+    # Filter to Microsoft scope by title keyword, mirroring the other general
+    # security feeds.
+    title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
         self,
@@ -29,4 +33,5 @@ class CISAAdvisoriesAdapter(SourceAdapter):
             etag=etag,
             last_modified=last_modified,
             default_language="en",
+            title_keywords=self.title_keywords,
         )

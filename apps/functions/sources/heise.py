@@ -10,7 +10,7 @@ whitelist in ``models/news_item.py``.
 """
 from __future__ import annotations
 
-from sources._rss import fetch_and_parse
+from sources._rss import MICROSOFT_TITLE_KEYWORDS, fetch_and_parse
 from sources.base import SourceAdapter, SourceFetchResult
 
 
@@ -21,27 +21,7 @@ class HeiseAdapter(SourceAdapter):
     # related keywords in the title to honour our topical scope without
     # storing any snippets/descriptions.
     feed_url = "https://www.heise.de/newsticker/heise-atom.xml"
-    title_keywords: tuple[str, ...] = (
-        "microsoft",
-        "windows",
-        "azure",
-        "office",
-        "microsoft 365",
-        "m365",
-        "teams",
-        "outlook",
-        "exchange",
-        "sharepoint",
-        "onedrive",
-        "intune",
-        "entra",
-        "defender",
-        "sentinel",
-        "copilot",
-        "xbox",
-        "github",
-        ".net",
-    )
+    title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
         self,
