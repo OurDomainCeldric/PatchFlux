@@ -19,6 +19,10 @@
   },
   "filters": {
     "heading": "Filter",
+    "topics": "Themen",
+    "allTopics": "Alle anzeigen",
+    "advanced": "Erweiterte Filter",
+    "active": "aktiv",
     "allSources": "Alle Quellen",
     "allProducts": "Alle Produkte",
     "allLanguages": "Alle Sprachen",
@@ -89,6 +93,14 @@
     "thirdPartyBody": "Jede Meldung verlinkt auf den Originalverlag. Beim Klick verlassen Sie diese Seite; ab dort gilt die Datenschutzerklärung des jeweiligen Verlags.",
     "rightsHeading": "Ihre Rechte",
     "rightsBody": "Nach der DSGVO haben Sie das Recht auf Auskunft, Berichtigung und Löschung personenbezogener Daten. Kontaktdaten finden Sie im Impressum."
+  },
+  "topics": {
+    "new-features": "Neue Features",
+    "changes": "Änderungen",
+    "cve": "CVEs",
+    "security": "Security",
+    "compliance": "EU / Compliance",
+    "outage": "Störungen"
   },
   "admin": {
     "title": "Admin-Konsole",

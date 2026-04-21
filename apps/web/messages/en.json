@@ -19,6 +19,10 @@
   },
   "filters": {
     "heading": "Filters",
+    "topics": "Topics",
+    "allTopics": "Show all",
+    "advanced": "Advanced filters",
+    "active": "active",
     "allSources": "All sources",
     "allProducts": "All products",
     "allLanguages": "All languages",
@@ -89,6 +93,14 @@
     "thirdPartyBody": "Every news item links out to the original publisher. Opening such a link transfers you to that publisher's site; their privacy policy applies from that point.",
     "rightsHeading": "Your rights",
     "rightsBody": "Under GDPR you have the right to request information, correction, or deletion of personal data. Contact details are listed in the imprint."
+  },
+  "topics": {
+    "new-features": "New features",
+    "changes": "Changes",
+    "cve": "CVEs",
+    "security": "Security",
+    "compliance": "EU / Compliance",
+    "outage": "Outages"
   },
   "admin": {
     "title": "Admin console",

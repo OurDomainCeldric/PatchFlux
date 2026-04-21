@@ -33,6 +33,7 @@ import azure.functions as func
 
 from config import get_settings
 from priority import compute_priority
+from topics import compute_topics
 from sources.azure_updates import AzureUpdatesAdapter
 from sources.base import SourceAdapter
 from sources.borns_it import BornsITAdapter
@@ -278,6 +279,7 @@ def _serialize_entity(ent: dict) -> dict:
         "tags": [t for t in (ent.get("Tags") or "").split(",") if t],
         "language": ent.get("Language") or "en",
         "priority": compute_priority(title, source_id),
+        "topics": list(compute_topics(title, source_id)),
     }
 
 
@@ -328,12 +330,17 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     )
     if _parse_bool(req.params.get("hot")):
         min_priority = max(min_priority, 2)
+    topics_param = (req.params.get("topics") or "").strip()
+    topics_filter: set[str] = {
+        t.strip().lower() for t in topics_param.split(",") if t.strip()
+    }
 
     store = _store()
     start = time.monotonic()
-    # When filtering by priority we typically need more raw rows than the
-    # requested page size, because the priority is computed post-query.
-    raw_limit = limit if min_priority == 0 else min(limit * 10, 500)
+    # When filtering by priority or topics we need to scan more raw rows
+    # because both filters are applied post-query.
+    need_post_filter = min_priority > 0 or bool(topics_filter)
+    raw_limit = limit if not need_post_filter else min(limit * 10, 500)
     page = store.query_page(
         limit=raw_limit,
         source_id=source_id,
@@ -349,6 +356,10 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     serialized = [_serialize_entity(e) for e in page.items]
     if min_priority > 0:
         serialized = [i for i in serialized if i["priority"] >= min_priority]
+    if topics_filter:
+        serialized = [
+            i for i in serialized if topics_filter.intersection(i["topics"])
+        ]
     if len(serialized) > limit:
         serialized = serialized[:limit]
 

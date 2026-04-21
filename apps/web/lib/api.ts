@@ -10,6 +10,7 @@ export interface NewsItem {
   tags: string[];
   language: "de" | "en";
   priority: 0 | 1 | 2;
+  topics: string[];
 }
 
 export interface NewsResponse {
@@ -66,6 +67,7 @@ export interface NewsFilters {
   deduped?: boolean;
   minPriority?: 1 | 2;
   hot?: boolean;
+  topics?: string[];
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
@@ -102,6 +104,8 @@ function buildNewsQuery(params: NewsFilters): URLSearchParams {
   if (params.deduped) search.set("deduped", "1");
   if (params.minPriority) search.set("min_priority", String(params.minPriority));
   if (params.hot) search.set("hot", "1");
+  if (params.topics && params.topics.length > 0)
+    search.set("topics", params.topics.join(","));
   return search;
 }
 

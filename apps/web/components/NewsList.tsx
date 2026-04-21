@@ -50,6 +50,7 @@ export function NewsList({ pathname }: NewsListProps) {
     if (filters.q) opts.q = filters.q;
     if (filters.deduped) opts.deduped = true;
     if (filters.onlyHot) opts.hot = true;
+    if (filters.topics.size > 0) opts.topics = Array.from(filters.topics);
     return opts;
   }, [filters]);
 
