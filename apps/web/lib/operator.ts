@@ -65,16 +65,16 @@ export interface OperatorConfig {
  * until the real values are known.
  */
 export const operator: OperatorConfig = {
-  fullName: PENDING_MARKER,
-  street: PENDING_MARKER,
-  postalCode: PENDING_MARKER,
-  city: PENDING_MARKER,
+  fullName: "René Omlor",
+  street: "Zinzendorfstraße 3",
+  postalCode: "01069",
+  city: "Dresden",
   country: "Deutschland",
-  contactEmail: PENDING_MARKER,
+  contactEmail: "contact@patchflux.de",
   secondContactEmail: "legal@patchflux.de",
   vatId: "",
-  mstvResponsibleName: PENDING_MARKER,
-  mstvResponsibleAddress: PENDING_MARKER,
+  mstvResponsibleName: "René Omlor",
+  mstvResponsibleAddress: "Zinzendorfstraße 3, 01069 Dresden, Deutschland",
 };
 
 /**
