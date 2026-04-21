@@ -42,28 +42,53 @@ export function SourcesList() {
         <p className="text-sm text-zinc-500">{t("news.loading")}</p>
       )}
       {sources && (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase text-zinc-500">
-              <th className="py-2">ID</th>
-              <th className="py-2">{t("sources.status")}</th>
-              <th className="py-2">{t("sources.lastFetch")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sources.map((source) => (
-              <tr key={source.sourceId} className="border-t border-zinc-200 dark:border-zinc-800">
-                <td className="py-2 font-mono text-xs">{source.sourceId}</td>
-                <td className="py-2">{source.lastStatus ?? "—"}</td>
-                <td className="py-2 text-xs text-zinc-500">
-                  {source.lastFetchAt
-                    ? dateFormatter.format(new Date(source.lastFetchAt))
-                    : t("sources.never")}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-zinc-500">
+                <th className="py-2 pr-4">ID</th>
+                <th className="py-2 pr-4">{t("sources.status")}</th>
+                <th className="py-2 pr-4">{t("sources.itemsLastRun")}</th>
+                <th className="py-2 pr-4">{t("sources.lastFetch")}</th>
+                <th className="py-2">{t("sources.error")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sources.map((source) => (
+                <tr
+                  key={source.sourceId}
+                  className="border-t border-zinc-200 dark:border-zinc-800"
+                >
+                  <td className="py-2 pr-4 font-mono text-xs">{source.sourceId}</td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={
+                        source.lastStatus === "ok"
+                          ? "inline-flex rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                          : source.lastStatus
+                            ? "inline-flex rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                            : "text-xs text-zinc-500"
+                      }
+                    >
+                      {source.lastStatus ?? "—"}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4 tabular-nums text-xs">
+                    {source.itemsLastRun ?? "—"}
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-zinc-500">
+                    {source.lastFetchAt
+                      ? dateFormatter.format(new Date(source.lastFetchAt))
+                      : t("sources.never")}
+                  </td>
+                  <td className="py-2 max-w-xs truncate text-xs text-zinc-500" title={source.lastError ?? ""}>
+                    {source.lastError ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

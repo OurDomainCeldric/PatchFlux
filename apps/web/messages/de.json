@@ -3,40 +3,103 @@
     "brand": "OmlorsNewsBot",
     "tagline": "Unabhängiger Aggregator für Microsoft- & IT-News",
     "languageLabel": "Sprache",
-    "switchTo": "Zu {language} wechseln"
+    "switchTo": "Zu {language} wechseln",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System",
+    "toggleTheme": "Design umschalten",
+    "skipToContent": "Zum Inhalt springen"
   },
   "nav": {
     "news": "News",
-    "sources": "Quellen"
+    "sources": "Quellen",
+    "admin": "Admin",
+    "feed": "RSS"
   },
   "filters": {
     "heading": "Filter",
     "allSources": "Alle Quellen",
     "allProducts": "Alle Produkte",
+    "allLanguages": "Alle Sprachen",
     "source": "Quelle",
     "product": "Produkt",
+    "language": "Sprache",
+    "since": "Zeitraum",
+    "since24h": "Letzte 24 h",
+    "since7d": "Letzte 7 Tage",
+    "since30d": "Letzte 30 Tage",
+    "sinceAll": "Gesamter Zeitraum",
+    "search": "Suche",
+    "searchPlaceholder": "Überschriften durchsuchen …",
+    "deduped": "Duplikate ausblenden",
     "reset": "Zurücksetzen"
   },
   "news": {
-    "empty": "Noch keine Meldungen. Der Ingest-Job läuft täglich um 05:00 UTC.",
+    "empty": "Keine Meldungen passen zu den Filtern.",
     "loading": "Lade Meldungen …",
     "openOriginal": "Zur Originalquelle",
     "openOriginalAria": "Originalartikel bei {source} in neuem Tab öffnen",
     "publishedAt": "Veröffentlicht am {date}",
     "retry": "Erneut versuchen",
-    "loadError": "Meldungen konnten nicht geladen werden."
+    "loadError": "Meldungen konnten nicht geladen werden.",
+    "loadMore": "Mehr laden",
+    "loadingMore": "Lade weitere …",
+    "endOfResults": "Ende der Ergebnisse erreicht.",
+    "resultCount": "{count, plural, =0 {Keine Meldungen} one {1 Meldung} other {# Meldungen}}"
   },
   "sources": {
     "heading": "Quellen & Status",
     "description": "Status der Feed-Abrufe. Alle Quellen werden ausschließlich über offizielle APIs und RSS-/Atom-Feeds abgerufen.",
     "lastFetch": "Letzter Abruf",
     "status": "Status",
-    "never": "noch nie"
+    "error": "Fehler",
+    "never": "noch nie",
+    "itemsLastRun": "Einträge (letzter Lauf)"
   },
   "footer": {
     "disclaimer": "OmlorsNewsBot ist ein unabhängiges Drittanbieter-Tool. Nicht verbunden mit, unterstützt von oder in irgendeiner Weise offiziell verknüpft mit Microsoft, Heise, Borns IT-Blog oder anderen genannten Verlagen. Alle Markenzeichen gehören ihren jeweiligen Inhabern.",
     "legalNotice": "Es werden ausschließlich Metadaten (Überschrift, Datum, Quelle, Link) gespeichert. Jede Meldung verlinkt auf den Originalartikel beim jeweiligen Verlag.",
     "imprint": "Impressum",
-    "privacy": "Datenschutz"
+    "privacy": "Datenschutz",
+    "rss": "RSS"
+  },
+  "imprint": {
+    "title": "Impressum",
+    "headingResponsible": "Angaben gemäß § 5 TMG",
+    "operator": "Privater Betrieb (nicht-kommerziell).",
+    "contactHeading": "Kontakt",
+    "contactHint": "Kontaktdaten werden auf Anfrage bereitgestellt.",
+    "disclaimer": "Diese Seite ist ein unabhängiger Drittanbieter-Aggregator und steht in keinerlei Verbindung zu den verlinkten Verlagen. Alle in Artikel­überschriften genannten Marken und Logos bleiben Eigentum ihrer jeweiligen Inhaber."
+  },
+  "privacy": {
+    "title": "Datenschutzerklärung",
+    "intro": "Diese Seite speichert ausschließlich die zur Anzeige der News-Überschriften benötigten Metadaten: Titel, Veröffentlichungsdatum, Quellenname und Link. Artikeltexte, Auszüge, Bilder oder Videos werden niemals kopiert.",
+    "dataHeading": "Welche Daten verarbeitet werden",
+    "dataBody": "Die Auslieferung erfolgt über Azure Static Web Apps und eine Azure-Functions-API. Es werden keine Cookies gesetzt, keine clientseitigen Analytics- oder Werbetracker geladen und keine Benutzerprofile erstellt.",
+    "logsHeading": "Server-Logs",
+    "logsBody": "Die serverseitige Application-Insights-Instanz protokolliert anonymisierte Zugriffsdaten (Pfad, Antwortzeit, User-Agent-Kategorie) bis zu 30 Tage zur Fehler- und Performance-Analyse. IP-Adressen werden nicht gespeichert.",
+    "thirdPartyHeading": "Externe Links",
+    "thirdPartyBody": "Jede Meldung verlinkt auf den Originalverlag. Beim Klick verlassen Sie diese Seite; ab dort gilt die Datenschutzerklärung des jeweiligen Verlags.",
+    "rightsHeading": "Ihre Rechte",
+    "rightsBody": "Nach der DSGVO haben Sie das Recht auf Auskunft, Berichtigung und Löschung personenbezogener Daten. Kontaktdaten finden Sie im Impressum."
+  },
+  "admin": {
+    "title": "Admin-Konsole",
+    "keyLabel": "Function-Key",
+    "keyHint": "Function-Key einfügen. Er wird ausschließlich im Browser (localStorage) gespeichert.",
+    "keySave": "Speichern",
+    "keyClear": "Entfernen",
+    "missingKey": "Function-Key eingeben, um Ingest-Läufe auszulösen.",
+    "triggerAll": "Komplett-Ingest auslösen",
+    "triggerSingle": "Auslösen",
+    "triggering": "Läuft …",
+    "lastResult": "Letztes Ergebnis",
+    "health": "Health",
+    "healthOk": "OK",
+    "healthDegraded": "Eingeschränkt",
+    "staleSources": "Veraltete Quellen",
+    "none": "keine",
+    "ingestError": "Ingest-Aufruf fehlgeschlagen."
   }
 }

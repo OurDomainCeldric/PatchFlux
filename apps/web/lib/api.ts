@@ -14,6 +14,7 @@ export interface NewsItem {
 export interface NewsResponse {
   items: NewsItem[];
   count: number;
+  nextCursor: string | null;
 }
 
 export interface SourceHealth {
@@ -21,28 +22,59 @@ export interface SourceHealth {
   lastFetchAt: string | null;
   lastStatus: string | null;
   lastError: string | null;
+  itemsLastRun?: number;
 }
 
 export interface SourcesResponse {
   sources: SourceHealth[];
 }
 
-/**
- * Base URL of the Azure Functions HTTP API. In production on Azure Static Web
- * Apps the linked Functions are exposed under `/api/*` by default.
- *
- * Override via `NEXT_PUBLIC_API_BASE_URL` for local development (e.g.
- * `http://localhost:7071/api`).
- */
+export interface ProductCount {
+  id: string;
+  count: number;
+}
+
+export interface ProductsResponse {
+  products: ProductCount[];
+}
+
+export interface HealthResponse {
+  status: "ok" | "degraded";
+  storage: boolean;
+  sourcesStale: string[];
+  checkedAt: string;
+}
+
+export interface IngestResponse {
+  written: Record<string, number>;
+}
+
+export interface NewsFilters {
+  source?: string;
+  product?: string;
+  lang?: "de" | "en";
+  since?: string;
+  q?: string;
+  limit?: number;
+  cursor?: string;
+  deduped?: boolean;
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+function joinUrl(path: string, search: URLSearchParams): string {
+  const qs = search.toString();
+  return `${API_BASE}${path}${qs ? `?${qs}` : ""}`;
+}
+
+async function request<T>(
+  path: string,
+  search: URLSearchParams,
+  init?: RequestInit,
+): Promise<T> {
+  const response = await fetch(joinUrl(path, search), {
     ...init,
-    headers: {
-      Accept: "application/json",
-      ...init?.headers,
-    },
+    headers: { Accept: "application/json", ...init?.headers },
   });
   if (!response.ok) {
     throw new Error(`Request to ${path} failed with ${response.status}`);
@@ -50,19 +82,50 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function fetchNews(params: {
-  source?: string;
-  product?: string;
-  limit?: number;
-} = {}): Promise<NewsResponse> {
+function buildNewsQuery(params: NewsFilters): URLSearchParams {
   const search = new URLSearchParams();
   if (params.source) search.set("source", params.source);
   if (params.product) search.set("product", params.product);
+  if (params.lang) search.set("lang", params.lang);
+  if (params.since) search.set("since", params.since);
+  if (params.q) search.set("q", params.q);
   if (params.limit) search.set("limit", String(params.limit));
-  const qs = search.toString();
-  return request<NewsResponse>(`/news${qs ? `?${qs}` : ""}`);
+  if (params.cursor) search.set("cursor", params.cursor);
+  if (params.deduped) search.set("deduped", "1");
+  return search;
 }
 
-export function fetchSources(): Promise<SourcesResponse> {
-  return request<SourcesResponse>("/sources");
+export function fetchNews(params: NewsFilters = {}): Promise<NewsResponse> {
+  return request<NewsResponse>("/news", buildNewsQuery(params));
+}
+
+export function fetchSources(includeCounts = false): Promise<SourcesResponse> {
+  const search = new URLSearchParams();
+  if (includeCounts) search.set("include_counts", "1");
+  return request<SourcesResponse>("/sources", search);
+}
+
+export function fetchProducts(months = 3): Promise<ProductsResponse> {
+  const search = new URLSearchParams({ months: String(months) });
+  return request<ProductsResponse>("/products", search);
+}
+
+export function fetchHealth(): Promise<HealthResponse> {
+  return request<HealthResponse>("/health", new URLSearchParams());
+}
+
+export async function triggerIngest(
+  adminKey: string,
+  sourceId?: string,
+): Promise<IngestResponse> {
+  const search = new URLSearchParams({ code: adminKey });
+  if (sourceId) search.set("source", sourceId);
+  const response = await fetch(joinUrl("/ingest", search), {
+    method: "POST",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`Ingest trigger failed with ${response.status}`);
+  }
+  return (await response.json()) as IngestResponse;
 }

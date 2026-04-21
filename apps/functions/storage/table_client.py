@@ -11,6 +11,9 @@ Partitioning strategy
 """
 from __future__ import annotations
 
+import base64
+import binascii
+import json
 import logging
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -55,6 +58,40 @@ def news_item_to_entity(item: NewsItem) -> dict:
     }
 
 
+def encode_cursor(*, year: int, month: int, last_row_key: str) -> str:
+    """Encode a pagination cursor as URL-safe base64 JSON."""
+    payload = json.dumps({"y": year, "m": month, "rk": last_row_key}, separators=(",", ":"))
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).rstrip(b"=").decode("ascii")
+
+
+def decode_cursor(cursor: str) -> tuple[int, int, str] | None:
+    """Decode a pagination cursor. Returns (year, month, last_row_key) or None if invalid."""
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+        data = json.loads(raw.decode("utf-8"))
+        return int(data["y"]), int(data["m"]), str(data["rk"])
+    except (ValueError, KeyError, TypeError, binascii.Error, json.JSONDecodeError):
+        return None
+
+
+def _prev_month(month: int, year: int) -> tuple[int, int]:
+    """Return (month, year) for the previous calendar month."""
+    month -= 1
+    if month == 0:
+        month = 12
+        year -= 1
+    return month, year
+
+
+@dataclass
+class QueryPage:
+    """A single page of news items with an optional next-page cursor."""
+
+    items: list[dict]
+    next_cursor: str | None
+
+
 @dataclass
 class NewsStore:
     """Thin wrapper over Azure Table Storage for news items + source health."""
@@ -93,6 +130,106 @@ class NewsStore:
                 count += 1
         return count
 
+    def query_page(
+        self,
+        *,
+        limit: int = 50,
+        source_id: str | None = None,
+        product: str | None = None,
+        language: str | None = None,
+        since: datetime | None = None,
+        search: str | None = None,
+        deduped: bool = False,
+        months_back: int = 36,
+        cursor: str | None = None,
+    ) -> QueryPage:
+        """Return one page of news items with filters and cursor pagination.
+
+        Walks month partitions (``YYYY-MM``) from the current month backwards so
+        results come out newest-first globally. Supports:
+
+        * ``source_id``  – exact match on SourceId (OData filter).
+        * ``product``    – case-insensitive substring match on Products CSV.
+        * ``language``   – exact match on Language.
+        * ``since``      – include only items with PublishedAt >= since.
+        * ``search``     – case-insensitive substring match on Title.
+        * ``deduped``    – collapse duplicates by DedupHash (first wins).
+        * ``cursor``     – opaque token from a previous page; resume right after it.
+        """
+        now = datetime.now(timezone.utc)
+        start_year, start_month = now.year, now.month
+        skip_row_key: str | None = None
+
+        if cursor:
+            decoded = decode_cursor(cursor)
+            if decoded is not None:
+                start_year, start_month, skip_row_key = decoded
+
+        seen_hashes: set[str] = set()
+        items: list[dict] = []
+        search_low = search.lower() if search else None
+
+        year, month = start_year, start_month
+
+        with self._news_client() as client:
+            for step in range(months_back):
+                partition = f"{year:04d}-{month:02d}"
+
+                filters = [f"PartitionKey eq '{partition}'"]
+                params: dict[str, object] = {}
+                if source_id:
+                    filters.append("SourceId eq @sid")
+                    params["sid"] = source_id
+                if language:
+                    filters.append("Language eq @lng")
+                    params["lng"] = language
+                # Only apply the RowKey skip on the first partition we examine.
+                if step == 0 and skip_row_key:
+                    filters.append("RowKey gt @rk")
+                    params["rk"] = skip_row_key
+
+                query = " and ".join(filters)
+
+                try:
+                    entities = client.query_entities(
+                        query_filter=query,
+                        parameters=params or None,
+                    )
+                except Exception:  # noqa: BLE001 — logged, skip month
+                    log.exception("Query failed for partition %s", partition)
+                    month, year = _prev_month(month, year)
+                    continue
+
+                for ent in entities:
+                    if product and product.lower() not in (ent.get("Products") or "").lower():
+                        continue
+                    if search_low and search_low not in (ent.get("Title") or "").lower():
+                        continue
+                    if since is not None:
+                        pub = ent.get("PublishedAt")
+                        if isinstance(pub, datetime) and pub.astimezone(timezone.utc) < since:
+                            continue
+                    if deduped:
+                        h = ent.get("DedupHash")
+                        if h:
+                            if h in seen_hashes:
+                                continue
+                            seen_hashes.add(h)
+
+                    items.append(ent)
+                    if len(items) >= limit:
+                        return QueryPage(
+                            items=items,
+                            next_cursor=encode_cursor(
+                                year=year, month=month, last_row_key=str(ent.get("RowKey"))
+                            ),
+                        )
+
+                month, year = _prev_month(month, year)
+
+        return QueryPage(items=items, next_cursor=None)
+
+    # Backward-compatible iterator API used by tests and older callers.
     def query_recent(
         self,
         *,
@@ -101,44 +238,48 @@ class NewsStore:
         product: str | None = None,
         months_back: int = 36,
     ) -> Iterator[dict]:
-        """Return up to *limit* most recent items, optionally filtered.
+        page = self.query_page(
+            limit=limit,
+            source_id=source_id,
+            product=product,
+            months_back=months_back,
+        )
+        yield from page.items
 
-        Iterates month partitions (YYYY-MM) from the current month backwards
-        so results come out newest-first globally. Within a partition, the
-        inverted-timestamp RowKey already yields newest-first.
+    def product_counts(
+        self,
+        *,
+        months_back: int = 3,
+        limit_per_month: int = 2000,
+    ) -> dict[str, int]:
+        """Return product_id -> occurrence count over the last *months_back* months.
+
+        Bounded scan: at most ``months_back * limit_per_month`` entities are examined.
+        Used to drive the frontend filter dropdown.
         """
+        counts: dict[str, int] = {}
         now = datetime.now(timezone.utc)
         year, month = now.year, now.month
-
         with self._news_client() as client:
-            yielded = 0
             for _ in range(months_back):
                 partition = f"{year:04d}-{month:02d}"
-
-                filters = [f"PartitionKey eq '{partition}'"]
-                params: dict[str, object] = {}
-                if source_id:
-                    filters.append("SourceId eq @sid")
-                    params["sid"] = source_id
-                query = " and ".join(filters)
-
-                entities = client.query_entities(
-                    query_filter=query,
-                    parameters=params or None,
-                )
-                for ent in entities:
-                    if product and product.lower() not in (ent.get("Products") or "").lower():
-                        continue
-                    yield ent
-                    yielded += 1
-                    if yielded >= limit:
-                        return
-
-                # step one month back
-                month -= 1
-                if month == 0:
-                    month = 12
-                    year -= 1
+                scanned = 0
+                try:
+                    entities = client.query_entities(
+                        query_filter=f"PartitionKey eq '{partition}'",
+                    )
+                    for ent in entities:
+                        for product in (ent.get("Products") or "").split(","):
+                            p = product.strip()
+                            if p:
+                                counts[p] = counts.get(p, 0) + 1
+                        scanned += 1
+                        if scanned >= limit_per_month:
+                            break
+                except Exception:  # noqa: BLE001
+                    log.exception("product_counts query failed for %s", partition)
+                month, year = _prev_month(month, year)
+        return counts
 
     # ---- SourceHealth ---------------------------------------------------
 
@@ -150,16 +291,19 @@ class NewsStore:
         error: str | None = None,
         etag: str | None = None,
         last_modified: str | None = None,
+        items_last_run: int | None = None,
     ) -> None:
-        entity = {
+        entity: dict[str, object] = {
             "PartitionKey": "sources",
             "RowKey": source_id,
             "LastFetchAt": datetime.now(timezone.utc),
             "LastStatus": status,
-            "LastError": error or "",
+            "LastError": (error or "")[:500],
             "ETag": etag or "",
             "LastModified": last_modified or "",
         }
+        if items_last_run is not None:
+            entity["ItemsLastRun"] = int(items_last_run)
         with self._health_client() as client:
             client.upsert_entity(entity, mode=UpdateMode.MERGE)
 
@@ -167,7 +311,7 @@ class NewsStore:
         with self._health_client() as client:
             try:
                 return client.get_entity(partition_key="sources", row_key=source_id)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return None
 
     def list_source_health(self) -> Iterator[dict]:

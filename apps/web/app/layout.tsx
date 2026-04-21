@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import { ThemeScript } from "@/components/ThemeScript";
 
 export const metadata = {
   title: "OmlorsNewsBot",
@@ -9,5 +10,10 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <ThemeScript />
+      {children}
+    </>
+  );
 }

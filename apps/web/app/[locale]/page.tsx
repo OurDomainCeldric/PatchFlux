@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
+import { FilterBar } from "@/components/FilterBar";
 import { NewsList } from "@/components/NewsList";
 
 export default async function HomePage({
@@ -8,6 +10,12 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const pathname = `/${locale}`;
 
-  return <NewsList />;
+  return (
+    <Suspense fallback={null}>
+      <FilterBar pathname={pathname} />
+      <NewsList pathname={pathname} />
+    </Suspense>
+  );
 }

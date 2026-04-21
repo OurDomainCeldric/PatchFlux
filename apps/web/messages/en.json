@@ -3,40 +3,103 @@
     "brand": "OmlorsNewsBot",
     "tagline": "Independent aggregator for Microsoft & IT news",
     "languageLabel": "Language",
-    "switchTo": "Switch to {language}"
+    "switchTo": "Switch to {language}",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "toggleTheme": "Toggle theme",
+    "skipToContent": "Skip to content"
   },
   "nav": {
     "news": "News",
-    "sources": "Sources"
+    "sources": "Sources",
+    "admin": "Admin",
+    "feed": "RSS"
   },
   "filters": {
     "heading": "Filters",
     "allSources": "All sources",
     "allProducts": "All products",
+    "allLanguages": "All languages",
     "source": "Source",
     "product": "Product",
+    "language": "Language",
+    "since": "Since",
+    "since24h": "Last 24 h",
+    "since7d": "Last 7 days",
+    "since30d": "Last 30 days",
+    "sinceAll": "All time",
+    "search": "Search",
+    "searchPlaceholder": "Search headlines …",
+    "deduped": "Hide duplicates",
     "reset": "Reset"
   },
   "news": {
-    "empty": "No items yet. The ingest job runs daily at 05:00 UTC.",
+    "empty": "No items match your filters.",
     "loading": "Loading news …",
     "openOriginal": "Open original",
     "openOriginalAria": "Open original article at {source} in a new tab",
     "publishedAt": "Published on {date}",
     "retry": "Retry",
-    "loadError": "Could not load news items."
+    "loadError": "Could not load news items.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more …",
+    "endOfResults": "You have reached the end.",
+    "resultCount": "{count, plural, =0 {No items} one {1 item} other {# items}}"
   },
   "sources": {
     "heading": "Sources & status",
     "description": "Feed fetch status. All sources are consumed exclusively via official APIs and RSS/Atom feeds.",
     "lastFetch": "Last fetch",
     "status": "Status",
-    "never": "never"
+    "error": "Error",
+    "never": "never",
+    "itemsLastRun": "Items (last run)"
   },
   "footer": {
     "disclaimer": "OmlorsNewsBot is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
     "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
     "imprint": "Imprint",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "rss": "RSS"
+  },
+  "imprint": {
+    "title": "Imprint",
+    "headingResponsible": "Information according to § 5 TMG",
+    "operator": "Private operator (non-commercial).",
+    "contactHeading": "Contact",
+    "contactHint": "Contact details are provided on request.",
+    "disclaimer": "This site is an independent third-party aggregator and is not affiliated with any of the referenced publishers. All trademarks and logos mentioned in article titles remain the property of their respective owners."
+  },
+  "privacy": {
+    "title": "Privacy",
+    "intro": "This site stores only the metadata needed to display news headlines: title, publication date, source name, and link. Article bodies, snippets, images, or videos are never copied.",
+    "dataHeading": "What we collect",
+    "dataBody": "Your visit is served by Azure Static Web Apps and an Azure Functions API. We do not set cookies, we do not run client-side analytics or advertising trackers, and we do not profile users.",
+    "logsHeading": "Server logs",
+    "logsBody": "The server-side Application Insights instance records anonymized request metadata (path, response time, user-agent category) for up to 30 days to investigate errors and performance. IP addresses are not stored.",
+    "thirdPartyHeading": "Third-party links",
+    "thirdPartyBody": "Every news item links out to the original publisher. Opening such a link transfers you to that publisher's site; their privacy policy applies from that point.",
+    "rightsHeading": "Your rights",
+    "rightsBody": "Under GDPR you have the right to request information, correction, or deletion of personal data. Contact details are listed in the imprint."
+  },
+  "admin": {
+    "title": "Admin console",
+    "keyLabel": "Function key",
+    "keyHint": "Paste the Function key. It is stored only in your browser (localStorage).",
+    "keySave": "Save",
+    "keyClear": "Clear",
+    "missingKey": "Enter a Function key to trigger ingests.",
+    "triggerAll": "Trigger full ingest",
+    "triggerSingle": "Trigger",
+    "triggering": "Running …",
+    "lastResult": "Last result",
+    "health": "Health",
+    "healthOk": "OK",
+    "healthDegraded": "Degraded",
+    "staleSources": "Stale sources",
+    "none": "none",
+    "ingestError": "Ingest request failed."
   }
 }

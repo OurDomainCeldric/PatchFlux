@@ -1,39 +1,128 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchNews, type NewsItem } from "@/lib/api";
+import { filtersToQuery, readFiltersFromParams } from "@/components/FilterBar";
 
-export function NewsList() {
+const PAGE_SIZE = 50;
+
+interface NewsListProps {
+  pathname: string;
+}
+
+function groupByDate(items: NewsItem[], formatter: Intl.DateTimeFormat) {
+  const groups = new Map<string, NewsItem[]>();
+  for (const item of items) {
+    const d = new Date(item.publishedAt);
+    const key = formatter.format(d);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(item);
+    else groups.set(key, [item]);
+  }
+  return Array.from(groups.entries());
+}
+
+export function NewsList({ pathname }: NewsListProps) {
   const t = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const filters = useMemo(
+    () => readFiltersFromParams(searchParams ?? new URLSearchParams()),
+    [searchParams],
+  );
+
   const [items, setItems] = useState<NewsItem[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestIdRef = useRef(0);
+
+  const fetchOptions = useMemo(() => {
+    const opts: Parameters<typeof fetchNews>[0] = { limit: PAGE_SIZE };
+    if (filters.source) opts.source = filters.source;
+    if (filters.product) opts.product = filters.product;
+    if (filters.lang === "de" || filters.lang === "en") opts.lang = filters.lang;
+    if (filters.since) opts.since = filters.since;
+    if (filters.q) opts.q = filters.q;
+    if (filters.deduped) opts.deduped = true;
+    return opts;
+  }, [filters]);
 
   useEffect(() => {
-    let cancelled = false;
+    const requestId = ++requestIdRef.current;
     setItems(null);
+    setNextCursor(null);
     setError(null);
-    fetchNews({ limit: 50 })
+    fetchNews(fetchOptions)
       .then((response) => {
-        if (!cancelled) setItems(response.items);
+        if (requestIdRef.current !== requestId) return;
+        setItems(response.items);
+        setNextCursor(response.nextCursor);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (requestIdRef.current !== requestId) return;
+        setError(err instanceof Error ? err.message : String(err));
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadKey]);
+  }, [fetchOptions]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const response = await fetchNews({ ...fetchOptions, cursor: nextCursor });
+      setItems((prev) => [...(prev ?? []), ...response.items]);
+      setNextCursor(response.nextCursor);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextCursor, loadingMore, fetchOptions]);
+
+  const applyFilterChange = useCallback(
+    (patch: Partial<ReturnType<typeof readFiltersFromParams>>) => {
+      const next = filtersToQuery({ ...filters, ...patch });
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [filters, pathname, router],
+  );
+
+  const dateHeaderFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
+    [locale],
+  );
+  const timeFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { timeStyle: "short" }),
+    [locale],
+  );
 
   if (error) {
     return (
-      <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+      <div
+        role="alert"
+        className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+      >
         <p className="font-medium">{t("news.loadError")}</p>
         <button
           type="button"
-          onClick={() => setReloadKey((n) => n + 1)}
+          onClick={() => {
+            setError(null);
+            requestIdRef.current++;
+            setItems(null);
+            fetchNews(fetchOptions)
+              .then((response) => {
+                setItems(response.items);
+                setNextCursor(response.nextCursor);
+              })
+              .catch((err: unknown) =>
+                setError(err instanceof Error ? err.message : String(err)),
+              );
+          }}
           className="mt-2 rounded border border-red-300 px-3 py-1 text-xs hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/40"
         >
           {t("news.retry")}
@@ -43,69 +132,114 @@ export function NewsList() {
   }
 
   if (items === null) {
-    return <p className="text-sm text-zinc-500">{t("news.loading")}</p>;
+    return (
+      <p aria-live="polite" className="text-sm text-zinc-500">
+        {t("news.loading")}
+      </p>
+    );
   }
 
   if (items.length === 0) {
-    return <p className="text-sm text-zinc-500">{t("news.empty")}</p>;
+    return (
+      <p aria-live="polite" className="text-sm text-zinc-500">
+        {t("news.empty")}
+      </p>
+    );
   }
 
-  const dateFormatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const grouped = groupByDate(items, dateHeaderFormatter);
 
   return (
-    <ul className="space-y-4">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="text-base font-medium leading-snug">
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener nofollow"
-                className="hover:underline"
-                aria-label={t("news.openOriginalAria", { source: item.sourceName })}
+    <div>
+      <p
+        aria-live="polite"
+        className="mb-3 text-xs text-zinc-500 dark:text-zinc-400"
+      >
+        {t("news.resultCount", { count: items.length })}
+      </p>
+      {grouped.map(([dateLabel, bucket]) => (
+        <section key={dateLabel} className="mb-6">
+          <h2 className="sticky top-0 z-10 -mx-4 mb-2 bg-zinc-50/90 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-600 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-300">
+            {dateLabel}
+          </h2>
+          <ul className="space-y-3">
+            {bucket.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
               >
-                {item.title}
-              </a>
-            </h2>
-            <span className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs uppercase text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-              {item.sourceName}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">
-            {t("news.publishedAt", { date: dateFormatter.format(new Date(item.publishedAt)) })}
-            {item.author ? ` · ${item.author}` : ""}
-          </p>
-          {item.products.length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-1">
-              {item.products.map((product) => (
-                <li
-                  key={product}
-                  className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-                >
-                  {product}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-3">
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener nofollow"
-              className="text-xs font-medium text-blue-700 hover:underline dark:text-blue-400"
-            >
-              {t("news.openOriginal")} →
-            </a>
-          </div>
-        </li>
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-base font-medium leading-snug">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener nofollow"
+                      className="hover:underline focus-visible:underline focus-visible:outline-2 focus-visible:outline-blue-500"
+                      aria-label={t("news.openOriginalAria", { source: item.sourceName })}
+                    >
+                      {item.title}
+                    </a>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => applyFilterChange({ source: item.sourceId })}
+                    className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs uppercase text-zinc-600 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    title={item.sourceId}
+                  >
+                    {item.sourceName}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {t("news.publishedAt", {
+                    date: timeFormatter.format(new Date(item.publishedAt)),
+                  })}
+                  {item.author ? ` · ${item.author}` : ""}
+                </p>
+                {item.products.length > 0 && (
+                  <ul className="mt-2 flex flex-wrap gap-1">
+                    {item.products.map((product) => (
+                      <li key={product}>
+                        <button
+                          type="button"
+                          onClick={() => applyFilterChange({ product })}
+                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-blue-500 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                        >
+                          {product}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-3">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener nofollow"
+                    className="text-xs font-medium text-blue-700 hover:underline dark:text-blue-400"
+                  >
+                    {t("news.openOriginal")} →
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+
+      <div className="mt-4 flex justify-center">
+        {nextCursor ? (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            {loadingMore ? t("news.loadingMore") : t("news.loadMore")}
+          </button>
+        ) : (
+          <p className="text-xs text-zinc-500">{t("news.endOfResults")}</p>
+        )}
+      </div>
+    </div>
   );
 }

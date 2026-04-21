@@ -23,6 +23,7 @@ PRODUCT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "exchange": ("exchange",),
     "sharepoint": ("sharepoint",),
     "outlook": ("outlook",),
+    "onedrive": ("onedrive",),
     "intune": ("intune",),
     "entra": ("entra", "azure ad", "azure active directory"),
     "defender": ("defender",),
@@ -30,8 +31,19 @@ PRODUCT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "purview": ("purview",),
     "sql-server": ("sql server",),
     "power-platform": ("power platform", "power automate", "power apps", "power bi"),
+    "fabric": ("microsoft fabric", "fabric "),
+    "dynamics-365": ("dynamics 365", "dynamics365", "d365"),
+    "viva": ("microsoft viva", "viva engage"),
+    "loop": ("microsoft loop", "ms loop"),
+    "powershell": ("powershell",),
+    "visual-studio": ("visual studio",),
+    "vs-code": ("vs code", "vscode", "visual studio code"),
+    "wsl": ("wsl", "windows subsystem for linux"),
+    "hyper-v": ("hyper-v", "hyperv"),
+    "xbox": ("xbox",),
     "copilot": ("copilot",),
     "github": ("github",),
+    "dotnet": (".net", "dotnet"),
 }
 
 
