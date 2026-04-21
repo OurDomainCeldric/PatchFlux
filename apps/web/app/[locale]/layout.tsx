@@ -57,7 +57,7 @@ export default async function LocaleLayout({
 
   const siteUrl = (
     process.env.NEXT_PUBLIC_SITE_URL ??
-    "https://patchflux.com"
+    "https://patchflux.de"
   ).replace(/\/$/, "");
   const apiBaseUrl = (
     process.env.NEXT_PUBLIC_API_BASE_URL ??

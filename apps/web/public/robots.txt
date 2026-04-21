@@ -3,4 +3,4 @@ Allow: /
 Disallow: /de/admin/
 Disallow: /en/admin/
 
-Sitemap: https://patchflux.com/sitemap.xml
+Sitemap: https://patchflux.de/sitemap.xml

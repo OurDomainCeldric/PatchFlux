@@ -3,7 +3,7 @@ import { locales } from "@/i18n/config";
 
 export const dynamic = "force-static";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://patchflux.com").replace(/\/$/, "");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://patchflux.de").replace(/\/$/, "");
 const PAGES = ["", "/sources", "/imprint", "/privacy"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
