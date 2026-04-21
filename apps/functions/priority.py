@@ -80,6 +80,11 @@ _NOTABLE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 # on a NOTABLE pattern (or a bare CVE) to HOT.
 _SECURITY_SOURCES = frozenset({"msrc"})
 
+# Sources whose every item is, by definition, actively exploited / critical.
+# CISA KEV is the canonical example: inclusion in the catalog means active
+# exploitation in the wild, which is exactly our "hot" criterion.
+_ALWAYS_HOT_SOURCES = frozenset({"cisa-kev"})
+
 
 def compute_priority(title: str, source_id: str = "") -> int:
     """Return 0 (normal), 1 (notable), or 2 (hot) for the given headline.
@@ -90,6 +95,8 @@ def compute_priority(title: str, source_id: str = "") -> int:
     *notable* by default and must match an explicit hot pattern to be
     promoted to level 2.
     """
+    if source_id in _ALWAYS_HOT_SOURCES:
+        return 2
     if not title:
         return 0
     if any(p.search(title) for p in _HOT_PATTERNS):

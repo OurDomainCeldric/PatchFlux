@@ -36,9 +36,15 @@ from priority import compute_priority
 from topics import compute_topics
 from sources.azure_updates import AzureUpdatesAdapter
 from sources.base import SourceAdapter
+from sources.bleeping_computer import BleepingComputerAdapter
 from sources.borns_it import BornsITAdapter
+from sources.cisa import CISAAdvisoriesAdapter
+from sources.cisa_kev import CISAKEVAdapter
+from sources.github_blog import GitHubBlogAdapter
 from sources.heise import HeiseAdapter
+from sources.krebs import KrebsAdapter
 from sources.m365_roadmap import M365RoadmapAdapter
+from sources.ms_security_blog import MSSecurityBlogAdapter
 from sources.msrc import MSRCAdapter
 from sources.tech_community import TechCommunityAdapter
 from sources.windows_blog import WindowsBlogAdapter, WindowsITProBlogAdapter
@@ -54,13 +60,18 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 INTER_SOURCE_DELAY_SECONDS = 1.0
 
 # Grouping used by both the timer triggers and ``?source=<id>`` on /ingest.
-HIGH_FREQ_SOURCES = {"msrc"}
+HIGH_FREQ_SOURCES = {"msrc", "cisa-kev"}
 MID_FREQ_SOURCES = {
     "heise",
     "borns-it",
     "ms-tech-community",
     "windows-blog",
     "windows-it-pro-blog",
+    "ms-security-blog",
+    "github-blog",
+    "cisa-advisories",
+    "bleeping-computer",
+    "krebs",
 }
 LOW_FREQ_SOURCES = {"m365-roadmap", "azure-updates"}
 
@@ -94,6 +105,12 @@ def _all_adapters() -> list[SourceAdapter]:
         TechCommunityAdapter(),
         WindowsBlogAdapter(),
         WindowsITProBlogAdapter(),
+        MSSecurityBlogAdapter(),
+        GitHubBlogAdapter(),
+        CISAAdvisoriesAdapter(),
+        CISAKEVAdapter(),
+        BleepingComputerAdapter(),
+        KrebsAdapter(),
         HeiseAdapter(),
         BornsITAdapter(),
     ]

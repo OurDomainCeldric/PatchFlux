@@ -67,3 +67,12 @@ def test_boring_title_is_zero() -> None:
 
 def test_empty_title() -> None:
     assert compute_priority("") == 0
+
+
+def test_kev_source_is_always_hot() -> None:
+    # Every KEV entry is actively exploited by definition.
+    assert compute_priority("KEV: Some vendor X advisory", source_id="cisa-kev") == 2
+
+
+def test_kev_source_overrides_empty_title() -> None:
+    assert compute_priority("", source_id="cisa-kev") == 2

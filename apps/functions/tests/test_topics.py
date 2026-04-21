@@ -67,3 +67,27 @@ def test_outage_incident() -> None:
 
 def test_boring_title_has_no_topics() -> None:
     assert compute_topics("Weekly wrap: community events in May") == ()
+
+
+def test_cisa_advisories_source_is_security() -> None:
+    topics = compute_topics("ICS Advisory: Widget HMI", source_id="cisa-advisories")
+    assert "security" in topics
+
+
+def test_cisa_kev_source_is_cve_only() -> None:
+    # KEV source auto-tags as cve; the cve/security mutual exclusion still
+    # applies, so security must not be present.
+    topics = compute_topics("Windows Kernel EoP Vulnerability", source_id="cisa-kev")
+    assert "cve" in topics
+    assert "security" not in topics
+
+
+def test_ms_security_blog_source_is_security() -> None:
+    topics = compute_topics("Threat intel report on XYZ actor", source_id="ms-security-blog")
+    assert "security" in topics
+
+
+def test_github_blog_source_is_new_features_and_changes() -> None:
+    topics = compute_topics("Dependabot now supports npm workspaces", source_id="github-blog")
+    assert "new-features" in topics
+    assert "changes" in topics

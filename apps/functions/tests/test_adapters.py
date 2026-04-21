@@ -4,9 +4,15 @@ from __future__ import annotations
 import re
 
 from sources.azure_updates import AzureUpdatesAdapter
+from sources.bleeping_computer import BleepingComputerAdapter
 from sources.borns_it import BornsITAdapter
+from sources.cisa import CISAAdvisoriesAdapter
+from sources.cisa_kev import CISAKEVAdapter
+from sources.github_blog import GitHubBlogAdapter
 from sources.heise import HeiseAdapter
+from sources.krebs import KrebsAdapter
 from sources.m365_roadmap import M365RoadmapAdapter
+from sources.ms_security_blog import MSSecurityBlogAdapter
 from sources.msrc import MSRCAdapter
 from sources.tech_community import TechCommunityAdapter
 from sources.windows_blog import WindowsBlogAdapter, WindowsITProBlogAdapter
@@ -18,6 +24,12 @@ ALL_ADAPTERS = [
     TechCommunityAdapter,
     WindowsBlogAdapter,
     WindowsITProBlogAdapter,
+    MSSecurityBlogAdapter,
+    GitHubBlogAdapter,
+    CISAAdvisoriesAdapter,
+    CISAKEVAdapter,
+    BleepingComputerAdapter,
+    KrebsAdapter,
     HeiseAdapter,
     BornsITAdapter,
 ]

@@ -127,6 +127,10 @@ _SOURCE_TOPICS: dict[str, tuple[Topic, ...]] = {
     "msrc": ("cve",),
     "m365-roadmap": ("new-features", "changes"),
     "azure-updates": ("new-features", "changes"),
+    "cisa-advisories": ("security",),
+    "cisa-kev": ("cve",),
+    "ms-security-blog": ("security",),
+    "github-blog": ("new-features", "changes"),
 }
 
 ALL_TOPICS: tuple[Topic, ...] = (
