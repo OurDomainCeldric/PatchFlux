@@ -38,7 +38,8 @@
     "searchPlaceholder": "Überschriften durchsuchen …",
     "deduped": "Duplikate ausblenden",
     "onlyHot": "Nur Top-News",
-    "reset": "Zurücksetzen"
+    "reset": "Zurücksetzen",
+    "close": "Schließen"
   },
   "news": {
     "empty": "Keine Meldungen passen zu den Filtern.",

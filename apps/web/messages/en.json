@@ -37,6 +37,7 @@
     "search": "Search",
     "searchPlaceholder": "Search headlines …",
     "deduped": "Hide duplicates",
+    "close": "Close",
     "onlyHot": "Hot only",
     "reset": "Reset"
   },

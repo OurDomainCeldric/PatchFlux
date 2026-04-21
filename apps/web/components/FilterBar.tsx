@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { fetchProducts, fetchSources, type ProductCount, type SourceHealth } from "@/lib/api";
@@ -17,10 +17,14 @@ export const TOPICS = [
 export type Topic = (typeof TOPICS)[number];
 
 const SINCE_OPTIONS: { value: string; labelKey: string }[] = [
-  { value: "", labelKey: "sinceAll" },
   { value: "24h", labelKey: "since24h" },
   { value: "7d", labelKey: "since7d" },
   { value: "30d", labelKey: "since30d" },
+];
+
+const LANG_OPTIONS: { value: string; label: string }[] = [
+  { value: "de", label: "DE" },
+  { value: "en", label: "EN" },
 ];
 
 export interface FilterState {
@@ -69,7 +73,6 @@ export function filtersToQuery(state: FilterState): URLSearchParams {
   if (state.deduped) sp.set("deduped", "1");
   if (state.onlyHot) sp.set("hot", "1");
   if (state.topics.size > 0) {
-    // Preserve canonical order.
     sp.set(
       "topics",
       TOPICS.filter((t) => state.topics.has(t)).join(","),
@@ -78,14 +81,44 @@ export function filtersToQuery(state: FilterState): URLSearchParams {
   return sp;
 }
 
-function advancedIsActive(state: FilterState): boolean {
-  return Boolean(
-    state.source || state.product || state.lang || state.since || state.deduped,
-  );
+function advancedActiveCount(state: FilterState): number {
+  let n = 0;
+  if (state.source) n += 1;
+  if (state.product) n += 1;
+  if (state.lang) n += 1;
+  if (state.since) n += 1;
+  if (state.deduped) n += 1;
+  return n;
 }
 
 interface FilterBarProps {
   pathname: string;
+}
+
+/** Pill-style toggle button with aria-pressed. */
+function TogglePill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={
+        active
+          ? "rounded-full border border-blue-600 bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-700"
+          : "rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      }
+    >
+      {children}
+    </button>
+  );
 }
 
 export function FilterBar({ pathname }: FilterBarProps) {
@@ -101,6 +134,9 @@ export function FilterBar({ pathname }: FilterBarProps) {
   const [draftQ, setDraftQ] = useState(current.q);
   const [sources, setSources] = useState<SourceHealth[]>([]);
   const [products, setProducts] = useState<ProductCount[]>([]);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const advancedRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setDraftQ(current.q);
@@ -123,6 +159,26 @@ export function FilterBar({ pathname }: FilterBarProps) {
     };
   }, []);
 
+  // Close dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!advancedOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (!advancedRef.current) return;
+      if (!advancedRef.current.contains(event.target as Node)) {
+        setAdvancedOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAdvancedOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [advancedOpen]);
+
   const navigate = (next: FilterState) => {
     const qs = filtersToQuery(next).toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -135,21 +191,22 @@ export function FilterBar({ pathname }: FilterBarProps) {
     navigate({ ...current, topics: next });
   };
 
-  const setAllTopics = (allOn: boolean) => {
-    const next: Set<Topic> = allOn ? new Set() : new Set(TOPICS);
-    // "all on" is represented as the empty set (no filter at all).
-    navigate({ ...current, topics: allOn ? new Set() : next });
+  const setAllTopics = () => {
+    navigate({ ...current, topics: new Set<Topic>() });
   };
 
-  const updateField =
-    <K extends keyof FilterState>(key: K) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const raw =
-        event.target instanceof HTMLInputElement && event.target.type === "checkbox"
-          ? event.target.checked
-          : event.target.value;
-      navigate({ ...current, [key]: raw } as FilterState);
-    };
+  /** Toggle a single-select string field: clicking the active value clears it. */
+  const toggleSingle = <K extends "source" | "product" | "lang" | "since">(
+    key: K,
+    value: string,
+  ) => {
+    const nextValue = current[key] === value ? "" : value;
+    navigate({ ...current, [key]: nextValue } as FilterState);
+  };
+
+  const toggleBool = <K extends "deduped" | "onlyHot">(key: K) => {
+    navigate({ ...current, [key]: !current[key] } as FilterState);
+  };
 
   const submitSearch = () => {
     navigate({ ...current, q: draftQ.trim() });
@@ -169,9 +226,8 @@ export function FilterBar({ pathname }: FilterBarProps) {
     });
   };
 
-  // "All topics" is selected when the user has not picked any (empty set).
   const allTopicsOn = current.topics.size === 0;
-  const advancedActive = advancedIsActive(current);
+  const advancedCount = advancedActiveCount(current);
 
   return (
     <section
@@ -186,7 +242,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
           </h2>
           <button
             type="button"
-            onClick={() => setAllTopics(true)}
+            onClick={setAllTopics}
             disabled={allTopicsOn}
             className="text-xs text-blue-700 hover:underline disabled:text-zinc-400 disabled:no-underline dark:text-blue-400"
           >
@@ -198,25 +254,16 @@ export function FilterBar({ pathname }: FilterBarProps) {
             const active = allTopicsOn || current.topics.has(topic);
             return (
               <li key={topic}>
-                <button
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => toggleTopic(topic)}
-                  className={
-                    active
-                      ? "rounded-full border border-blue-600 bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-700"
-                      : "rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                  }
-                >
+                <TogglePill active={active} onClick={() => toggleTopic(topic)}>
                   {t(`topics.${topic}`)}
-                </button>
+                </TogglePill>
               </li>
             );
           })}
         </ul>
       </div>
 
-      {/* Search + quick switches -------------------------------------- */}
+      {/* Search + quick switches + advanced toggle -------------------- */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm focus-within:outline-2 focus-within:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-950">
           <span aria-hidden className="text-zinc-400">
@@ -236,112 +283,180 @@ export function FilterBar({ pathname }: FilterBarProps) {
           />
         </label>
 
-        <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-          <input
-            type="checkbox"
-            checked={current.onlyHot}
-            onChange={updateField("onlyHot")}
-            className="h-3 w-3"
-          />
-          <span>{t("filters.onlyHot")}</span>
-        </label>
-
         <button
           type="button"
-          onClick={reset}
-          className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          aria-pressed={current.onlyHot}
+          onClick={() => toggleBool("onlyHot")}
+          className={
+            current.onlyHot
+              ? "rounded-full border border-red-600 bg-red-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-red-700"
+              : "rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          }
         >
-          {t("filters.reset")}
+          {t("filters.onlyHot")}
         </button>
-      </div>
 
-      {/* Advanced filters --------------------------------------------- */}
-      <details
-        className="mt-4 rounded border border-zinc-200 dark:border-zinc-800"
-        open={advancedActive}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800">
-          <span>{t("filters.advanced")}</span>
-          {advancedActive && (
-            <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-              {t("filters.active")}
+        {/* Advanced-filters icon toggle (dropdown) ------------------- */}
+        <div className="relative" ref={advancedRef}>
+          <button
+            type="button"
+            aria-expanded={advancedOpen}
+            aria-haspopup="true"
+            aria-label={t("filters.advanced")}
+            title={t("filters.advanced")}
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className={
+              "relative inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-zinc-800 " +
+              (advancedCount > 0
+                ? "border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-300"
+                : "border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")
+            }
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+              className="h-4 w-4"
+            >
+              <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h11a1.5 1.5 0 0 1 1.2 2.4l-4.7 6.27V16a1 1 0 0 1-.55.9l-2 1A1 1 0 0 1 8 17v-5.33L3.3 5.4A1.5 1.5 0 0 1 3 4.5Z" />
+            </svg>
+            {advancedCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white"
+              >
+                {advancedCount}
+              </span>
+            )}
+            <span className="sr-only">
+              {t("filters.advanced")}
+              {advancedCount > 0 ? ` (${t("filters.active")})` : ""}
             </span>
+          </button>
+
+          {advancedOpen && (
+            <div
+              role="dialog"
+              aria-label={t("filters.advanced")}
+              className="absolute right-0 top-full z-20 mt-2 w-[min(92vw,22rem)] rounded-lg border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+                  {t("filters.advanced")}
+                </span>
+                {advancedCount > 0 && (
+                  <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                    {t("filters.active")}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <fieldset>
+                  <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {t("filters.source")}
+                  </legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sources.length === 0 && (
+                      <span className="text-xs text-zinc-400">—</span>
+                    )}
+                    {sources.map((s) => (
+                      <TogglePill
+                        key={s.sourceId}
+                        active={current.source === s.sourceId}
+                        onClick={() => toggleSingle("source", s.sourceId)}
+                      >
+                        {s.sourceId}
+                      </TogglePill>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {products.length > 0 && (
+                  <fieldset>
+                    <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      {t("filters.product")}
+                    </legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      {products.map((p) => (
+                        <TogglePill
+                          key={p.id}
+                          active={current.product === p.id}
+                          onClick={() => toggleSingle("product", p.id)}
+                        >
+                          {p.id} ({p.count})
+                        </TogglePill>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+
+                <fieldset>
+                  <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {t("filters.language")}
+                  </legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {LANG_OPTIONS.map((opt) => (
+                      <TogglePill
+                        key={opt.value}
+                        active={current.lang === opt.value}
+                        onClick={() => toggleSingle("lang", opt.value)}
+                      >
+                        {opt.label}
+                      </TogglePill>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset>
+                  <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {t("filters.since")}
+                  </legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SINCE_OPTIONS.map((opt) => (
+                      <TogglePill
+                        key={opt.value}
+                        active={current.since === opt.value}
+                        onClick={() => toggleSingle("since", opt.value)}
+                      >
+                        {t(`filters.${opt.labelKey}`)}
+                      </TogglePill>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset>
+                  <div className="flex flex-wrap gap-1.5">
+                    <TogglePill
+                      active={current.deduped}
+                      onClick={() => toggleBool("deduped")}
+                    >
+                      {t("filters.deduped")}
+                    </TogglePill>
+                  </div>
+                </fieldset>
+              </div>
+
+              <div className="mt-3 flex items-center justify-end gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                >
+                  {t("filters.reset")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(false)}
+                  className="rounded border border-blue-600 bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-500"
+                >
+                  {t("filters.close")}
+                </button>
+              </div>
+            </div>
           )}
-        </summary>
-        <div className="grid grid-cols-1 gap-3 border-t border-zinc-200 p-3 md:grid-cols-2 lg:grid-cols-4 dark:border-zinc-800">
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="text-zinc-600 dark:text-zinc-300">{t("filters.source")}</span>
-            <select
-              value={current.source}
-              onChange={updateField("source")}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            >
-              <option value="">{t("filters.allSources")}</option>
-              {sources.map((s) => (
-                <option key={s.sourceId} value={s.sourceId}>
-                  {s.sourceId}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="text-zinc-600 dark:text-zinc-300">{t("filters.product")}</span>
-            <select
-              value={current.product}
-              onChange={updateField("product")}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            >
-              <option value="">{t("filters.allProducts")}</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.id} ({p.count})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="text-zinc-600 dark:text-zinc-300">
-              {t("filters.language")}
-            </span>
-            <select
-              value={current.lang}
-              onChange={updateField("lang")}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            >
-              <option value="">{t("filters.allLanguages")}</option>
-              <option value="de">DE</option>
-              <option value="en">EN</option>
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="text-zinc-600 dark:text-zinc-300">{t("filters.since")}</span>
-            <select
-              value={current.since}
-              onChange={updateField("since")}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            >
-              {SINCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {t(`filters.${opt.labelKey}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="col-span-full flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-            <input
-              type="checkbox"
-              checked={current.deduped}
-              onChange={updateField("deduped")}
-              className="h-3 w-3"
-            />
-            <span>{t("filters.deduped")}</span>
-          </label>
         </div>
-      </details>
+      </div>
     </section>
   );
 }
