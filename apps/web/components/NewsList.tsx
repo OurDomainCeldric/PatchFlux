@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchNews, type NewsItem } from "@/lib/api";
-import { filtersToQuery, readFiltersFromParams } from "@/components/FilterBar";
+import {
+  filtersToQuery,
+  readFiltersFromParams,
+  type FilterState,
+} from "@/components/FilterBar";
+import { NewsListSkeleton } from "@/components/Skeleton";
 
 const PAGE_SIZE = 50;
 
@@ -134,18 +139,37 @@ export function NewsList({ pathname }: NewsListProps) {
   }
 
   if (items === null) {
-    return (
-      <p aria-live="polite" className="text-sm text-zinc-500">
-        {t("news.loading")}
-      </p>
-    );
+    return <NewsListSkeleton cards={5} />;
   }
 
   if (items.length === 0) {
+    const summary = describeActiveFilters(filters, t);
+    const hasActive = summary.length > 0;
     return (
-      <p aria-live="polite" className="text-sm text-zinc-500">
-        {t("news.empty")}
-      </p>
+      <div
+        aria-live="polite"
+        className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+      >
+        <p className="font-medium">
+          {hasActive ? t("news.emptyWithFilters") : t("news.empty")}
+        </p>
+        {hasActive && (
+          <>
+            <p className="mt-2 text-xs text-zinc-500">
+              {t("news.activeFilters", { filters: summary.join(" · ") })}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                router.replace(pathname, { scroll: false });
+              }}
+              className="mt-3 rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              {t("news.clearAll")}
+            </button>
+          </>
+        )}
+      </div>
     );
   }
 
@@ -271,4 +295,37 @@ export function NewsList({ pathname }: NewsListProps) {
       </div>
     </div>
   );
+}
+
+type Translator = ReturnType<typeof useTranslations>;
+
+/**
+ * Build a human-readable list of active filter labels, e.g.
+ * ``["Source: msrc", "Topics: CVE, Security"]``. Returns an empty array
+ * when the user has the default filter state (no overrides).
+ */
+function describeActiveFilters(state: FilterState, t: Translator): string[] {
+  const out: string[] = [];
+  if (state.source) out.push(t("filterLabels.source", { value: state.source }));
+  if (state.product) out.push(t("filterLabels.product", { value: state.product }));
+  if (state.lang) out.push(t("filterLabels.lang", { value: state.lang.toUpperCase() }));
+  if (state.since) out.push(t("filterLabels.since", { value: state.since }));
+  if (state.q) out.push(t("filterLabels.q", { value: state.q }));
+  if (state.deduped) out.push(t("filterLabels.deduped"));
+  if (state.onlyHot) out.push(t("filterLabels.onlyHot"));
+  // Only describe topics when they deviate from the default (CVE off, others on).
+  const topicsArr = Array.from(state.topics);
+  const defaultTopics = new Set(["new-features", "changes", "security", "compliance", "outage"]);
+  const isDefault =
+    topicsArr.length === defaultTopics.size &&
+    topicsArr.every((x) => defaultTopics.has(x));
+  if (!isDefault) {
+    const labels = topicsArr.map((x) => t(`topics.${x as "cve"}`));
+    out.push(
+      t("filterLabels.topics", {
+        value: labels.length ? labels.join(", ") : "—",
+      }),
+    );
+  }
+  return out;
 }

@@ -43,6 +43,9 @@
   },
   "news": {
     "empty": "Keine Meldungen passen zu den Filtern.",
+    "emptyWithFilters": "Keine Meldungen passen zu den aktuellen Filtern.",
+    "activeFilters": "Aktive Filter: {filters}",
+    "clearAll": "Alle Filter zurücksetzen",
     "loading": "Lade Meldungen …",
     "openOriginal": "Zur Originalquelle",
     "openOriginalAria": "Originalartikel bei {source} in neuem Tab öffnen",
@@ -102,6 +105,21 @@
     "security": "Security",
     "compliance": "EU / Compliance",
     "outage": "Störungen"
+  },
+  "errors": {
+    "sectionCrashTitle": "Beim Laden dieses Bereichs ist ein Fehler aufgetreten.",
+    "sectionCrashBody": "Der Rest der Seite funktioniert weiter. Bitte versuchen Sie, diesen Bereich neu zu laden.",
+    "retry": "Erneut versuchen"
+  },
+  "filterLabels": {
+    "source": "Quelle: {value}",
+    "product": "Produkt: {value}",
+    "lang": "Sprache: {value}",
+    "since": "Zeitraum: {value}",
+    "q": "Suche: {value}",
+    "deduped": "Duplikate ausblenden",
+    "onlyHot": "Nur Top-News",
+    "topics": "Themen: {value}"
   },
   "admin": {
     "title": "Admin-Konsole",

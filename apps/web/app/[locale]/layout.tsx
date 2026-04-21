@@ -34,7 +34,7 @@ export async function generateMetadata(props: {
       locale,
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: t("brand"),
       description: t("tagline"),
     },
@@ -55,8 +55,41 @@ export default async function LocaleLayout({
   const messages = await getMessages();
   const tCommon = await getTranslations({ locale, namespace: "common" });
 
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "https://witty-ocean-00e235903.7.azurestaticapps.net"
+  ).replace(/\/$/, "");
+  const apiBaseUrl = (
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "https://func-omlorsnews-prod.azurewebsites.net/api"
+  ).replace(/\/$/, "");
+  // Derive the API origin for preconnect (strip /api and any trailing path).
+  let apiOrigin = "";
+  try {
+    apiOrigin = new URL(apiBaseUrl).origin;
+  } catch {
+    apiOrigin = "";
+  }
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "NewsMediaOrganization",
+    name: tCommon("brand"),
+    description: tCommon("tagline"),
+    url: `${siteUrl}/${locale}`,
+    inLanguage: locale,
+  };
+
   return (
     <html lang={locale}>
+      <head>
+        {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </head>
       <body className="bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a

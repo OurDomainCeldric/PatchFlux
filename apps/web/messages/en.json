@@ -43,6 +43,9 @@
   },
   "news": {
     "empty": "No items match your filters.",
+    "emptyWithFilters": "No items match the current filters.",
+    "activeFilters": "Active filters: {filters}",
+    "clearAll": "Clear all filters",
     "loading": "Loading news …",
     "openOriginal": "Open original",
     "openOriginalAria": "Open original article at {source} in a new tab",
@@ -102,6 +105,21 @@
     "security": "Security",
     "compliance": "EU / Compliance",
     "outage": "Outages"
+  },
+  "errors": {
+    "sectionCrashTitle": "Something went wrong loading this section.",
+    "sectionCrashBody": "The rest of the page still works. Try reloading this section.",
+    "retry": "Try again"
+  },
+  "filterLabels": {
+    "source": "Source: {value}",
+    "product": "Product: {value}",
+    "lang": "Language: {value}",
+    "since": "Period: {value}",
+    "q": "Search: {value}",
+    "deduped": "Hide duplicates",
+    "onlyHot": "Hot only",
+    "topics": "Topics: {value}"
   },
   "admin": {
     "title": "Admin console",

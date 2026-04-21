@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { fetchProducts, fetchSources, type ProductCount, type SourceHealth } from "@/lib/api";
+import { fetchProducts, fetchSources, fetchTopics, type ProductCount, type SourceHealth } from "@/lib/api";
 
 /** Topic ids known to the backend (see apps/functions/topics.py). */
 export const TOPICS = [
@@ -145,6 +145,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
   const [draftQ, setDraftQ] = useState(current.q);
   const [sources, setSources] = useState<SourceHealth[]>([]);
   const [products, setProducts] = useState<ProductCount[]>([]);
+  const [topicCounts, setTopicCounts] = useState<Record<string, number>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const advancedRef = useRef<HTMLDivElement | null>(null);
@@ -163,6 +164,14 @@ export function FilterBar({ pathname }: FilterBarProps) {
     fetchProducts(3)
       .then((r) => {
         if (!cancelled) setProducts(r.products);
+      })
+      .catch(() => {});
+    fetchTopics(14)
+      .then((r) => {
+        if (cancelled) return;
+        const map: Record<string, number> = {};
+        for (const t of r.topics) map[t.id] = t.count;
+        setTopicCounts(map);
       })
       .catch(() => {});
     return () => {
@@ -265,10 +274,23 @@ export function FilterBar({ pathname }: FilterBarProps) {
         <ul role="group" aria-label={t("filters.topics")} className="flex flex-wrap gap-2">
           {TOPICS.map((topic) => {
             const active = current.topics.has(topic);
+            const count = topicCounts[topic];
             return (
               <li key={topic}>
                 <TogglePill active={active} onClick={() => toggleTopic(topic)}>
                   {t(`topics.${topic}`)}
+                  {typeof count === "number" && count > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className={
+                        active
+                          ? "ml-1.5 rounded bg-white/20 px-1 text-[10px] font-semibold"
+                          : "ml-1.5 rounded bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                      }
+                    >
+                      {count}
+                    </span>
+                  )}
                 </TogglePill>
               </li>
             );
@@ -314,7 +336,8 @@ export function FilterBar({ pathname }: FilterBarProps) {
           <button
             type="button"
             aria-expanded={advancedOpen}
-            aria-haspopup="true"
+            aria-haspopup="dialog"
+            aria-controls="advanced-filters-panel"
             aria-label={t("filters.advanced")}
             title={t("filters.advanced")}
             onClick={() => setAdvancedOpen((v) => !v)}
@@ -349,12 +372,17 @@ export function FilterBar({ pathname }: FilterBarProps) {
 
           {advancedOpen && (
             <div
+              id="advanced-filters-panel"
               role="dialog"
-              aria-label={t("filters.advanced")}
+              aria-modal="false"
+              aria-labelledby="advanced-filters-heading"
               className="absolute right-0 top-full z-20 mt-2 w-[min(92vw,22rem)] rounded-lg border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+                <span
+                  id="advanced-filters-heading"
+                  className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300"
+                >
                   {t("filters.advanced")}
                 </span>
                 {advancedCount > 0 && (

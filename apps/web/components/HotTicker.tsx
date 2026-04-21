@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchHot, type NewsItem } from "@/lib/api";
+import { HotTickerSkeleton } from "@/components/Skeleton";
 
 /**
  * A horizontally scrolling ticker of the current "hot" headlines
@@ -41,7 +42,8 @@ export function HotTicker() {
     return () => media.removeEventListener("change", onChange);
   }, []);
 
-  if (!items || items.length === 0) return null;
+  if (!items) return <HotTickerSkeleton />;
+  if (items.length === 0) return null;
 
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "short" });
   // Duplicate the list so the CSS scroll appears seamless.

@@ -45,6 +45,16 @@ export interface ProductsResponse {
   products: ProductCount[];
 }
 
+export interface TopicCount {
+  id: string;
+  count: number;
+}
+
+export interface TopicsResponse {
+  topics: TopicCount[];
+  windowDays: number;
+}
+
 export interface HealthResponse {
   status: "ok" | "degraded";
   storage: boolean;
@@ -132,6 +142,11 @@ export function fetchSources(includeCounts = false): Promise<SourcesResponse> {
 export function fetchProducts(months = 3): Promise<ProductsResponse> {
   const search = new URLSearchParams({ months: String(months) });
   return request<ProductsResponse>("/products", search);
+}
+
+export function fetchTopics(days = 14): Promise<TopicsResponse> {
+  const search = new URLSearchParams({ days: String(days) });
+  return request<TopicsResponse>("/topics", search);
 }
 
 export function fetchHealth(): Promise<HealthResponse> {

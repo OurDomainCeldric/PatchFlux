@@ -442,6 +442,22 @@ def api_products(req: func.HttpRequest) -> func.HttpResponse:
     return _json_response({"products": products}, cache_seconds=900)
 
 
+@app.function_name(name="api_topics")
+@app.route(route="topics", methods=["GET"])
+def api_topics(req: func.HttpRequest) -> func.HttpResponse:
+    """Return tag occurrence counts over a recent window (default 14 days).
+
+    Powers the filter chip badges in the web UI. Cached for 5 minutes.
+    """
+    days = _parse_int(req.params.get("days"), default=14, minimum=1, maximum=90)
+    counts = _store().topic_counts(days=days)
+    topics = [
+        {"id": tid, "count": count}
+        for tid, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+    return _json_response({"topics": topics, "windowDays": days}, cache_seconds=300)
+
+
 @app.function_name(name="api_hot")
 @app.route(route="hot", methods=["GET"])
 def api_hot(req: func.HttpRequest) -> func.HttpResponse:

@@ -17,12 +17,13 @@ import json
 import logging
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from azure.core.exceptions import ResourceExistsError
 from azure.data.tables import TableClient, TableServiceClient, UpdateMode
 
 from models.news_item import NewsItem
+from topics import compute_topics
 
 _INVERTED_TS_BASE = 9_999_999_999
 
@@ -278,6 +279,59 @@ class NewsStore:
                             break
                 except Exception:  # noqa: BLE001
                     log.exception("product_counts query failed for %s", partition)
+                month, year = _prev_month(month, year)
+        return counts
+
+    def topic_counts(
+        self,
+        *,
+        days: int = 14,
+        limit_per_month: int = 2000,
+    ) -> dict[str, int]:
+        """Return topic_id -> occurrence count over the last *days* days.
+
+        Topic tags are stored as a comma-separated string in the ``Tags``
+        entity field by ``news_item_to_entity``. Bounded scan like
+        ``product_counts``: walks at most 2 month partitions for windows <=
+        31 days to keep the tally cheap. Used by ``/api/topics``.
+        """
+        counts: dict[str, int] = {}
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=max(1, days))
+        year, month = now.year, now.month
+        # For <=31-day windows we only ever need the current + previous month.
+        months_to_scan = 1 if days <= 7 else 2 if days <= 31 else 3
+        with self._news_client() as client:
+            for _ in range(months_to_scan):
+                partition = f"{year:04d}-{month:02d}"
+                scanned = 0
+                try:
+                    entities = client.query_entities(
+                        query_filter=f"PartitionKey eq '{partition}'",
+                    )
+                    for ent in entities:
+                        published = ent.get("PublishedAt")
+                        if isinstance(published, datetime) and published < cutoff:
+                            continue
+                        entity_topics: set[str] = set()
+                        for tag in (ent.get("Tags") or "").split(","):
+                            t = tag.strip().lower()
+                            if t:
+                                entity_topics.add(t)
+                        # Also compute topics on the fly from title + source_id,
+                        # since adapters typically don't populate ``item.tags``
+                        # (topics are derived at response time in /api/news).
+                        title = str(ent.get("Title") or "")
+                        source_id = str(ent.get("SourceId") or "")
+                        if title:
+                            entity_topics.update(compute_topics(title, source_id))
+                        for topic in entity_topics:
+                            counts[topic] = counts.get(topic, 0) + 1
+                        scanned += 1
+                        if scanned >= limit_per_month:
+                            break
+                except Exception:  # noqa: BLE001
+                    log.exception("topic_counts query failed for %s", partition)
                 month, year = _prev_month(month, year)
         return counts
 
