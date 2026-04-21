@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { AdminNavLink } from "@/components/AdminNavLink";
 import { NavLink } from "@/components/NavLink";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -18,7 +19,7 @@ export async function SiteHeader() {
         <nav className="flex flex-wrap items-center gap-3 text-sm" aria-label="Primary">
           <NavLink href={`/${currentLocale}`}>{t("nav.news")}</NavLink>
           <NavLink href={`/${currentLocale}/sources`}>{t("nav.sources")}</NavLink>
-          <NavLink href={`/${currentLocale}/admin`}>{t("nav.admin")}</NavLink>
+          <AdminNavLink href={`/${currentLocale}/admin`} label={t("nav.admin")} />
           <ThemeToggle />
         </nav>
       </div>
