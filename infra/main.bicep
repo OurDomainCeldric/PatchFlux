@@ -230,7 +230,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'AI_MAX_CALLS_PER_RUN'
-          value: '100'
+          value: '500'
         }
         {
           name: 'AI_MAX_OUTPUT_TOKENS'
