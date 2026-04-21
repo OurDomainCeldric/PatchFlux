@@ -11,7 +11,7 @@ import {
   type IngestResponse,
 } from "@/lib/api";
 
-const STORAGE_KEY = "omlorsnewsbot:functionKey";
+const STORAGE_KEY = "patchflux:functionKey";
 
 export function AdminConsole() {
   const t = useTranslations();

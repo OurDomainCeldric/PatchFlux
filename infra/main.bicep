@@ -1,4 +1,4 @@
-// OmlorsNewsBot — core Azure infrastructure.
+// PatchFlux — core Azure infrastructure.
 //
 // Deploys:
 //   * Storage Account (Standard_LRS)  — Table Storage for NewsItems & SourceHealth
@@ -141,7 +141,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'USER_AGENT'
-          value: 'OmlorsNewsBot/1.0 (+https://github.com/OmlorsNewsBot/OmlorsNewsBot)'
+          value: 'PatchFlux/1.0 (+https://github.com/OurDomainCeldric/PatchFlux)'
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -205,7 +205,7 @@ resource availabilityTest 'Microsoft.Insights/webtests@2022-06-15' = {
   properties: {
     Name: availabilityTestName
     SyntheticMonitorId: availabilityTestName
-    Description: 'OmlorsNewsBot /api/health availability'
+    Description: 'PatchFlux /api/health availability'
     Enabled: true
     Frequency: 300
     Timeout: 30

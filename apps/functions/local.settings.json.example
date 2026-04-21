@@ -7,7 +7,7 @@
     "NEWS_TABLE_CONNECTION": "UseDevelopmentStorage=true",
     "NEWS_TABLE_NAME": "NewsItems",
     "SOURCE_HEALTH_TABLE_NAME": "SourceHealth",
-    "USER_AGENT": "OmlorsNewsBot/1.0 (+https://github.com/OmlorsNewsBot/OmlorsNewsBot)"
+    "USER_AGENT": "PatchFlux/1.0 (+https://github.com/OurDomainCeldric/PatchFlux)"
   },
   "Host": {
     "LocalHttpPort": 7071,

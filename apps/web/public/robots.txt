@@ -3,4 +3,4 @@ Allow: /
 Disallow: /de/admin/
 Disallow: /en/admin/
 
-Sitemap: https://witty-ocean-00e235903.7.azurestaticapps.net/sitemap.xml
+Sitemap: https://patchflux.com/sitemap.xml

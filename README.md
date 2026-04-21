@@ -1,4 +1,4 @@
-# OmlorsNewsBot
+# PatchFlux
 
 An **independent, third-party** aggregator for Microsoft product changes, new features, and IT news. This project is **not affiliated with, endorsed by, or connected to** Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.
 

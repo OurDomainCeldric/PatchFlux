@@ -20,6 +20,6 @@ def get_settings() -> Settings:
         source_health_table_name=os.environ.get("SOURCE_HEALTH_TABLE_NAME", "SourceHealth"),
         user_agent=os.environ.get(
             "USER_AGENT",
-            "OmlorsNewsBot/1.0 (+https://github.com/OmlorsNewsBot/OmlorsNewsBot)",
+            "PatchFlux/1.0 (+https://github.com/OurDomainCeldric/PatchFlux)",
         ),
     )

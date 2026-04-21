@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "OmlorsNewsBot",
+    "brand": "PatchFlux",
     "tagline": "Independent aggregator for Microsoft & IT news",
     "languageLabel": "Language",
     "switchTo": "Switch to {language}",
@@ -72,7 +72,7 @@
     "itemsLastRun": "Items (last run)"
   },
   "footer": {
-    "disclaimer": "OmlorsNewsBot is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
+    "disclaimer": "PatchFlux is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
     "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
     "imprint": "Imprint",
     "privacy": "Privacy",

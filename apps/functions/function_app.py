@@ -546,8 +546,8 @@ def api_feed_rss(req: func.HttpRequest) -> func.HttpResponse:
     parts: list[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<rss version="2.0"><channel>',
-        "<title>OmlorsNewsBot</title>",
-        "<link>https://omlorsnewsbot.example/</link>",
+        "<title>PatchFlux</title>",
+        "<link>https://patchflux.com/</link>",
         "<description>Independent Microsoft &amp; IT news aggregator.</description>",
         "<language>en</language>",
         f"<lastBuildDate>{now_str}</lastBuildDate>",
@@ -594,10 +594,10 @@ def api_feed_atom(req: func.HttpRequest) -> func.HttpResponse:
     parts: list[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<feed xmlns="http://www.w3.org/2005/Atom">',
-        "<title>OmlorsNewsBot</title>",
-        '<link href="https://omlorsnewsbot.example/" rel="alternate"/>',
+        "<title>PatchFlux</title>",
+        '<link href="https://patchflux.com/" rel="alternate"/>',
         f"<updated>{now.isoformat()}</updated>",
-        "<id>urn:omlorsnewsbot:main</id>",
+        "<id>urn:patchflux:main</id>",
     ]
     for item in items:
         pub = item.get("publishedAt") or now.isoformat()

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 type Theme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "omlorsnewsbot:theme";
+const STORAGE_KEY = "patchflux:theme";
 
 function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;

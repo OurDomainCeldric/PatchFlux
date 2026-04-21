@@ -7,7 +7,7 @@ This document defines **non-negotiable legal guardrails** enforced in the code a
 - **Official APIs and standardized RSS/Atom feeds only.** No aggressive HTML scraping.
 - **Conditional GETs** (`If-None-Match`, `If-Modified-Since`) to minimize load on publishers.
 - **Throttling:** at most one request per source per scheduled run, exponential backoff on errors.
-- **Transparent User-Agent** identifying the bot and linking to the repository, e.g. `OmlorsNewsBot/1.0 (+https://github.com/<owner>/OmlorsNewsBot)`.
+- **Transparent User-Agent** identifying the bot and linking to the repository, e.g. `PatchFlux/1.0 (+https://github.com/OurDomainCeldric/PatchFlux)`.
 - `robots.txt` is respected.
 
 ## 2. Storage — what MAY be stored per item

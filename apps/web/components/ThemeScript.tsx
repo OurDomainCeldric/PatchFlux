@@ -6,7 +6,7 @@
 export function ThemeScript() {
   const code = `(() => {
     try {
-      var stored = localStorage.getItem('omlorsnewsbot:theme');
+      var stored = localStorage.getItem('patchflux:theme');
       var theme = stored || 'system';
       var prefersDark = theme === 'dark' ||
         (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

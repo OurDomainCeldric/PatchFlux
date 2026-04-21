@@ -4,7 +4,7 @@ This repository has **strict legal guardrails**. Read this file before making ch
 
 ## Project intent
 
-OmlorsNewsBot is an **independent third-party aggregator** of Microsoft / IT news. It pulls metadata from official APIs and RSS/Atom feeds, stores only legally safe metadata, and links back to the original publisher. See [LEGAL.md](LEGAL.md).
+OmlorsNewsBot (rebranded as **PatchFlux**) is an **independent third-party aggregator** of Microsoft / IT news. It pulls metadata from official APIs and RSS/Atom feeds, stores only legally safe metadata, and links back to the original publisher. See [LEGAL.md](LEGAL.md).
 
 ## Monorepo layout
 

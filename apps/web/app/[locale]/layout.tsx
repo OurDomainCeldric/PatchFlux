@@ -57,7 +57,7 @@ export default async function LocaleLayout({
 
   const siteUrl = (
     process.env.NEXT_PUBLIC_SITE_URL ??
-    "https://witty-ocean-00e235903.7.azurestaticapps.net"
+    "https://patchflux.com"
   ).replace(/\/$/, "");
   const apiBaseUrl = (
     process.env.NEXT_PUBLIC_API_BASE_URL ??
