@@ -33,6 +33,7 @@
     "search": "Suche",
     "searchPlaceholder": "Überschriften durchsuchen …",
     "deduped": "Duplikate ausblenden",
+    "onlyHot": "Nur Top-News",
     "reset": "Zurücksetzen"
   },
   "news": {
@@ -46,7 +47,12 @@
     "loadMore": "Mehr laden",
     "loadingMore": "Lade weitere …",
     "endOfResults": "Ende der Ergebnisse erreicht.",
-    "resultCount": "{count, plural, =0 {Keine Meldungen} one {1 Meldung} other {# Meldungen}}"
+    "resultCount": "{count, plural, =0 {Keine Meldungen} one {1 Meldung} other {# Meldungen}}",
+    "hotBadge": "Top",
+    "hotAria": "Als kritisch oder EU-relevant markiert",
+    "hotToday": "Top-News",
+    "hotTicker": "Ticker mit Top-News",
+    "contentLanguage": "Sprache des Artikels"
   },
   "sources": {
     "heading": "Quellen & Status",

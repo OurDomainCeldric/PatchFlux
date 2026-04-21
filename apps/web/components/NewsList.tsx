@@ -49,6 +49,7 @@ export function NewsList({ pathname }: NewsListProps) {
     if (filters.since) opts.since = filters.since;
     if (filters.q) opts.q = filters.q;
     if (filters.deduped) opts.deduped = true;
+    if (filters.onlyHot) opts.hot = true;
     return opts;
   }, [filters]);
 
@@ -163,13 +164,31 @@ export function NewsList({ pathname }: NewsListProps) {
             {dateLabel}
           </h2>
           <ul className="space-y-3">
-            {bucket.map((item) => (
+            {bucket.map((item) => {
+              const hot = item.priority >= 2;
+              const notable = item.priority === 1;
+              return (
               <li
                 key={item.id}
-                className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                className={
+                  hot
+                    ? "rounded-lg border-l-4 border-red-500 border-y border-r border-y-red-200 border-r-red-200 bg-red-50 p-4 shadow-sm transition hover:shadow-md dark:border-y-red-900 dark:border-r-red-900 dark:bg-red-950/30"
+                    : notable
+                    ? "rounded-lg border-l-4 border-amber-400 border-y border-r border-y-amber-200 border-r-amber-200 bg-amber-50/50 p-4 shadow-sm transition hover:shadow-md dark:border-y-amber-900 dark:border-r-amber-900 dark:bg-amber-950/20"
+                    : "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                }
               >
                 <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-base font-medium leading-snug">
+                  <h3 className="flex items-start gap-2 text-base font-medium leading-snug">
+                    {hot && (
+                      <span
+                        aria-label={t("news.hotAria")}
+                        title={t("news.hotAria")}
+                        className="mt-0.5 inline-flex shrink-0 items-center rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                      >
+                        {t("news.hotBadge")}
+                      </span>
+                    )}
                     <a
                       href={item.url}
                       target="_blank"
@@ -189,11 +208,19 @@ export function NewsList({ pathname }: NewsListProps) {
                     {item.sourceName}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {t("news.publishedAt", {
-                    date: timeFormatter.format(new Date(item.publishedAt)),
-                  })}
-                  {item.author ? ` · ${item.author}` : ""}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <span>
+                    {t("news.publishedAt", {
+                      date: timeFormatter.format(new Date(item.publishedAt)),
+                    })}
+                    {item.author ? ` · ${item.author}` : ""}
+                  </span>
+                  <span
+                    className="inline-flex items-center rounded border border-zinc-300 px-1.5 py-0 text-[10px] font-semibold uppercase text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                    title={t("news.contentLanguage")}
+                  >
+                    {item.language}
+                  </span>
                 </p>
                 {item.products.length > 0 && (
                   <ul className="mt-2 flex flex-wrap gap-1">
@@ -221,7 +248,8 @@ export function NewsList({ pathname }: NewsListProps) {
                   </a>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ))}

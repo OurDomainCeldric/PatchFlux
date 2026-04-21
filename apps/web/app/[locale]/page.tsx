@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { FilterBar } from "@/components/FilterBar";
+import { HotTicker } from "@/components/HotTicker";
 import { NewsList } from "@/components/NewsList";
 
 export default async function HomePage({
@@ -14,6 +15,7 @@ export default async function HomePage({
 
   return (
     <Suspense fallback={null}>
+      <HotTicker />
       <FilterBar pathname={pathname} />
       <NewsList pathname={pathname} />
     </Suspense>

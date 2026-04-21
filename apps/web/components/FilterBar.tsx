@@ -19,6 +19,7 @@ export interface FilterState {
   since: string;
   q: string;
   deduped: boolean;
+  onlyHot: boolean;
 }
 
 export function readFiltersFromParams(params: URLSearchParams): FilterState {
@@ -29,6 +30,7 @@ export function readFiltersFromParams(params: URLSearchParams): FilterState {
     since: params.get("since") ?? "",
     q: params.get("q") ?? "",
     deduped: params.get("deduped") === "1",
+    onlyHot: params.get("hot") === "1",
   };
 }
 
@@ -40,6 +42,7 @@ export function filtersToQuery(state: FilterState): URLSearchParams {
   if (state.since) sp.set("since", state.since);
   if (state.q) sp.set("q", state.q);
   if (state.deduped) sp.set("deduped", "1");
+  if (state.onlyHot) sp.set("hot", "1");
   return sp;
 }
 
@@ -103,7 +106,15 @@ export function FilterBar({ pathname }: FilterBarProps) {
 
   const reset = () => {
     setDraftQ("");
-    navigate({ source: "", product: "", lang: "", since: "", q: "", deduped: false });
+    navigate({
+      source: "",
+      product: "",
+      lang: "",
+      since: "",
+      q: "",
+      deduped: false,
+      onlyHot: false,
+    });
   };
 
   return (
@@ -189,15 +200,26 @@ export function FilterBar({ pathname }: FilterBarProps) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-          <input
-            type="checkbox"
-            checked={current.deduped}
-            onChange={updateField("deduped")}
-            className="h-3 w-3"
-          />
-          <span>{t("deduped")}</span>
-        </label>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={current.onlyHot}
+              onChange={updateField("onlyHot")}
+              className="h-3 w-3"
+            />
+            <span>{t("onlyHot")}</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={current.deduped}
+              onChange={updateField("deduped")}
+              className="h-3 w-3"
+            />
+            <span>{t("deduped")}</span>
+          </label>
+        </div>
         <button
           type="button"
           onClick={reset}

@@ -32,6 +32,7 @@ from xml.sax.saxutils import escape as xml_escape
 import azure.functions as func
 
 from config import get_settings
+from priority import compute_priority
 from sources.azure_updates import AzureUpdatesAdapter
 from sources.base import SourceAdapter
 from sources.borns_it import BornsITAdapter
@@ -263,17 +264,20 @@ def _iso(value: object) -> object:
 
 
 def _serialize_entity(ent: dict) -> dict:
+    title = ent.get("Title") or ""
+    source_id = ent.get("SourceId") or ""
     return {
         "id": ent.get("RowKey"),
-        "title": ent.get("Title"),
+        "title": title,
         "publishedAt": _iso(ent.get("PublishedAt")),
-        "sourceId": ent.get("SourceId"),
+        "sourceId": source_id,
         "sourceName": ent.get("SourceName"),
         "author": ent.get("Author") or None,
         "url": ent.get("CanonicalUrl"),
         "products": [p for p in (ent.get("Products") or "").split(",") if p],
         "tags": [t for t in (ent.get("Tags") or "").split(",") if t],
         "language": ent.get("Language") or "en",
+        "priority": compute_priority(title, source_id),
     }
 
 
@@ -319,11 +323,19 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     search = (req.params.get("q") or "").strip() or None
     deduped = _parse_bool(req.params.get("deduped"))
     cursor = req.params.get("cursor") or None
+    min_priority = _parse_int(
+        req.params.get("min_priority"), default=0, minimum=0, maximum=2
+    )
+    if _parse_bool(req.params.get("hot")):
+        min_priority = max(min_priority, 2)
 
     store = _store()
     start = time.monotonic()
+    # When filtering by priority we typically need more raw rows than the
+    # requested page size, because the priority is computed post-query.
+    raw_limit = limit if min_priority == 0 else min(limit * 10, 500)
     page = store.query_page(
-        limit=limit,
+        limit=raw_limit,
         source_id=source_id,
         product=product,
         language=language,
@@ -334,9 +346,15 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     )
     duration_ms = int((time.monotonic() - start) * 1000)
 
+    serialized = [_serialize_entity(e) for e in page.items]
+    if min_priority > 0:
+        serialized = [i for i in serialized if i["priority"] >= min_priority]
+    if len(serialized) > limit:
+        serialized = serialized[:limit]
+
     payload = {
-        "items": [_serialize_entity(e) for e in page.items],
-        "count": len(page.items),
+        "items": serialized,
+        "count": len(serialized),
         "nextCursor": page.next_cursor,
     }
 
@@ -394,6 +412,40 @@ def api_products(req: func.HttpRequest) -> func.HttpResponse:
         for pid, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
     return _json_response({"products": products}, cache_seconds=900)
+
+
+@app.function_name(name="api_hot")
+@app.route(route="hot", methods=["GET"])
+def api_hot(req: func.HttpRequest) -> func.HttpResponse:
+    """Top "hot" headlines (priority>=2) from the last N days.
+
+    Query parameters
+    ----------------
+    * ``limit`` (default 10, max 25)
+    * ``days``  (default 7, max 30)
+    * ``lang``  (optional: ``de`` | ``en``)
+    """
+    limit = _parse_int(req.params.get("limit"), default=10, minimum=1, maximum=25)
+    days = _parse_int(req.params.get("days"), default=7, minimum=1, maximum=30)
+    language = req.params.get("lang") or None
+    if language not in (None, "de", "en"):
+        language = None
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    store = _store()
+    # Scan up to ~500 recent rows; priorities are computed post-query.
+    page = store.query_page(
+        limit=500,
+        language=language,
+        since=since,
+        deduped=True,
+    )
+    serialized = [_serialize_entity(e) for e in page.items]
+    hot = [i for i in serialized if i["priority"] >= 2][:limit]
+    return _json_response(
+        {"items": hot, "count": len(hot)},
+        cache_seconds=300,
+    )
 
 
 @app.function_name(name="api_health")

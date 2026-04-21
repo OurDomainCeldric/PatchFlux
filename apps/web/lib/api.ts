@@ -9,12 +9,18 @@ export interface NewsItem {
   products: string[];
   tags: string[];
   language: "de" | "en";
+  priority: 0 | 1 | 2;
 }
 
 export interface NewsResponse {
   items: NewsItem[];
   count: number;
   nextCursor: string | null;
+}
+
+export interface HotResponse {
+  items: NewsItem[];
+  count: number;
 }
 
 export interface SourceHealth {
@@ -58,6 +64,8 @@ export interface NewsFilters {
   limit?: number;
   cursor?: string;
   deduped?: boolean;
+  minPriority?: 1 | 2;
+  hot?: boolean;
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
@@ -92,11 +100,23 @@ function buildNewsQuery(params: NewsFilters): URLSearchParams {
   if (params.limit) search.set("limit", String(params.limit));
   if (params.cursor) search.set("cursor", params.cursor);
   if (params.deduped) search.set("deduped", "1");
+  if (params.minPriority) search.set("min_priority", String(params.minPriority));
+  if (params.hot) search.set("hot", "1");
   return search;
 }
 
 export function fetchNews(params: NewsFilters = {}): Promise<NewsResponse> {
   return request<NewsResponse>("/news", buildNewsQuery(params));
+}
+
+export function fetchHot(
+  params: { limit?: number; days?: number; lang?: "de" | "en" } = {},
+): Promise<HotResponse> {
+  const search = new URLSearchParams();
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.days) search.set("days", String(params.days));
+  if (params.lang) search.set("lang", params.lang);
+  return request<HotResponse>("/hot", search);
 }
 
 export function fetchSources(includeCounts = false): Promise<SourcesResponse> {

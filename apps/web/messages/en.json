@@ -33,6 +33,7 @@
     "search": "Search",
     "searchPlaceholder": "Search headlines …",
     "deduped": "Hide duplicates",
+    "onlyHot": "Hot only",
     "reset": "Reset"
   },
   "news": {
@@ -46,7 +47,12 @@
     "loadMore": "Load more",
     "loadingMore": "Loading more …",
     "endOfResults": "You have reached the end.",
-    "resultCount": "{count, plural, =0 {No items} one {1 item} other {# items}}"
+    "resultCount": "{count, plural, =0 {No items} one {1 item} other {# items}}",
+    "hotBadge": "Hot",
+    "hotAria": "Marked as critical / EU-relevant",
+    "hotToday": "Hot today",
+    "hotTicker": "Hot news ticker",
+    "contentLanguage": "Content language"
   },
   "sources": {
     "heading": "Sources & status",
