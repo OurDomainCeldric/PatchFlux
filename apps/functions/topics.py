@@ -124,7 +124,7 @@ _TOPIC_PATTERNS: dict[Topic, tuple[re.Pattern[str], ...]] = {
 # Sources whose entire output always belongs to these topics, irrespective of
 # the headline wording.
 _SOURCE_TOPICS: dict[str, tuple[Topic, ...]] = {
-    "msrc": ("security", "cve"),
+    "msrc": ("cve",),
     "m365-roadmap": ("new-features", "changes"),
     "azure-updates": ("new-features", "changes"),
 }
@@ -148,7 +148,9 @@ def compute_topics(title: str, source_id: str = "") -> tuple[Topic, ...]:
                 found.add(topic)
     for topic in _SOURCE_TOPICS.get(source_id, ()):
         found.add(topic)
-    # A CVE number is always "security" as well.
+    # CVEs are a separate bucket: items tagged ``cve`` are never also ``security``.
+    # This keeps the "Security" filter focused on non-CVE security news
+    # (zero-days, patches, malware, advisories).
     if "cve" in found:
-        found.add("security")
+        found.discard("security")
     return tuple(sorted(found))

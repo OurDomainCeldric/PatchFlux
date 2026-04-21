@@ -15,15 +15,31 @@ def test_all_topics_is_stable() -> None:
     )
 
 
-def test_cve_implies_security() -> None:
+def test_cve_does_not_imply_security() -> None:
     topics = compute_topics("CVE-2026-12345 Windows EoP Vulnerability")
-    assert "cve" in topics and "security" in topics
-
-
-def test_msrc_source_is_security_and_cve() -> None:
-    topics = compute_topics("Advisory update", source_id="msrc")
-    assert "security" in topics
     assert "cve" in topics
+    # CVE items are never also tagged security, even when the title contains
+    # security keywords like "vulnerability".
+    assert "security" not in topics
+
+
+def test_bare_cve_is_not_security() -> None:
+    topics = compute_topics("CVE-2026-00001")
+    assert "cve" in topics
+    assert "security" not in topics
+
+
+def test_msrc_source_is_cve_only() -> None:
+    topics = compute_topics("Advisory update", source_id="msrc")
+    assert "cve" in topics
+    assert "security" not in topics
+
+
+def test_non_cve_security_still_tagged() -> None:
+    # Non-CVE security news must still be tagged "security".
+    topics = compute_topics("Ungepatchte Windows-Zero-Days under active attack")
+    assert "security" in topics
+    assert "cve" not in topics
 
 
 def test_new_features_ga() -> None:

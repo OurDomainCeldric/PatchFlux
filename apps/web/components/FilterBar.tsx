@@ -16,6 +16,14 @@ export const TOPICS = [
 ] as const;
 export type Topic = (typeof TOPICS)[number];
 
+/** Default topic selection: everything except CVEs. */
+const DEFAULT_TOPICS: readonly Topic[] = TOPICS.filter((t) => t !== "cve");
+
+function isDefaultTopicSet(s: Set<Topic>): boolean {
+  if (s.size !== DEFAULT_TOPICS.length) return false;
+  return DEFAULT_TOPICS.every((t) => s.has(t));
+}
+
 const SINCE_OPTIONS: { value: string; labelKey: string }[] = [
   { value: "24h", labelKey: "since24h" },
   { value: "7d", labelKey: "since7d" },
@@ -35,12 +43,13 @@ export interface FilterState {
   q: string;
   deduped: boolean;
   onlyHot: boolean;
-  /** Empty set means "all topics". A non-empty set means "only those". */
+  /** Empty set means "no matches". Omitted URL param means the DEFAULT set. */
   topics: Set<Topic>;
 }
 
 function parseTopics(raw: string | null): Set<Topic> {
-  if (!raw) return new Set();
+  // Absent param means the DEFAULT selection (CVE off, others on).
+  if (raw === null) return new Set<Topic>(DEFAULT_TOPICS);
   const known = new Set<Topic>(TOPICS);
   return new Set(
     raw
@@ -72,7 +81,9 @@ export function filtersToQuery(state: FilterState): URLSearchParams {
   if (state.q) sp.set("q", state.q);
   if (state.deduped) sp.set("deduped", "1");
   if (state.onlyHot) sp.set("hot", "1");
-  if (state.topics.size > 0) {
+  // Serialize whenever the selection differs from the DEFAULT set
+  // (empty, partial, or full including CVE).
+  if (!isDefaultTopicSet(state.topics)) {
     sp.set(
       "topics",
       TOPICS.filter((t) => state.topics.has(t)).join(","),
@@ -192,7 +203,8 @@ export function FilterBar({ pathname }: FilterBarProps) {
   };
 
   const setAllTopics = () => {
-    navigate({ ...current, topics: new Set<Topic>() });
+    // Explicitly select every topic, including CVE.
+    navigate({ ...current, topics: new Set<Topic>(TOPICS) });
   };
 
   /** Toggle a single-select string field: clicking the active value clears it. */
@@ -222,11 +234,12 @@ export function FilterBar({ pathname }: FilterBarProps) {
       q: "",
       deduped: false,
       onlyHot: false,
-      topics: new Set<Topic>(),
+      // Reset goes back to the default topic selection (CVE off).
+      topics: new Set<Topic>(DEFAULT_TOPICS),
     });
   };
 
-  const allTopicsOn = current.topics.size === 0;
+  const allTopicsOn = current.topics.size === TOPICS.length;
   const advancedCount = advancedActiveCount(current);
 
   return (
@@ -251,7 +264,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
         </div>
         <ul role="group" aria-label={t("filters.topics")} className="flex flex-wrap gap-2">
           {TOPICS.map((topic) => {
-            const active = allTopicsOn || current.topics.has(topic);
+            const active = current.topics.has(topic);
             return (
               <li key={topic}>
                 <TogglePill active={active} onClick={() => toggleTopic(topic)}>
