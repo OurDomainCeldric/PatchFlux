@@ -31,6 +31,8 @@ from xml.sax.saxutils import escape as xml_escape
 
 import azure.functions as func
 
+from ai.budget import BudgetTracker
+from ai.gate import GateRunStats, build_gate
 from config import get_settings
 from priority import compute_priority
 from sources.azure_updates import AzureUpdatesAdapter
@@ -129,6 +131,25 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
 
     adapters = _all_adapters() if source_ids is None else _adapters_matching(source_ids)
 
+    budget = BudgetTracker(
+        connection_string=settings.table_connection,
+        table_name=settings.ai_budget_table_name,
+        max_monthly_usd=settings.ai_max_monthly_usd,
+        model=settings.ai_model,
+    )
+    gate = build_gate(
+        enabled=settings.ai_gate_enabled,
+        endpoint=settings.ai_endpoint,
+        api_key=settings.ai_api_key,
+        deployment=settings.ai_deployment,
+        model=settings.ai_model,
+        api_version=settings.ai_api_version,
+        budget=budget,
+        max_calls_per_run=settings.ai_max_calls_per_run,
+        max_output_tokens=settings.ai_max_output_tokens,
+    )
+    gate_stats = GateRunStats()
+
     totals: dict[str, int] = {}
 
     for index, adapter in enumerate(adapters):
@@ -161,7 +182,15 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
 
         written = 0
         if result.items:
-            written = store.upsert_many(result.items)
+            items_to_write = result.items
+            if gate is not None:
+                items_to_write = gate.process(
+                    list(result.items),
+                    source_id=adapter.source_id,
+                    stats=gate_stats,
+                )
+            if items_to_write:
+                written = store.upsert_many(items_to_write)
 
         store.record_source_health(
             source_id=adapter.source_id,
@@ -185,7 +214,11 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
             )
         )
 
-    return {"written": totals}
+    response: dict = {"written": totals}
+    if gate is not None:
+        response["ai_gate"] = gate_stats.to_dict()
+        log.info(json.dumps({"event": "ingest.ai_gate", **gate_stats.to_dict()}))
+    return response
 
 
 # ---- Timer triggers ---------------------------------------------------------

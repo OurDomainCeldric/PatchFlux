@@ -33,6 +33,29 @@ param repositoryBranch string = 'main'
 @description('Optional email address for operational alerts (availability, stale ingest). Leave empty to skip alert wiring.')
 param alertEmail string = ''
 
+@description('Deploy an Azure OpenAI account for the AI relevance gate. Requires the subscription to be allow-listed for Azure OpenAI.')
+param deployAiGate bool = false
+
+@description('Hard monthly USD ceiling for AI relevance gate calls. Enforced in code by BudgetTracker.')
+param aiMaxMonthlyUsd int = 5
+
+@description('Azure OpenAI model to deploy for the gate. gpt-4o-mini is the cheapest GA option with structured JSON output.')
+param aiModelName string = 'gpt-4o-mini'
+
+@description('Azure OpenAI model version. Pin to a known-good version so behaviour is stable across redeploys.')
+param aiModelVersion string = '2024-07-18'
+
+@description('Tokens-per-minute capacity for the gate deployment. 10 = 10k TPM, well above expected 1k TPM usage.')
+@minValue(1)
+@maxValue(1000)
+param aiCapacityK int = 10
+
+@description('Azure OpenAI API version the Function App uses when calling the deployment.')
+param aiApiVersion string = '2024-10-21'
+
+@description('Azure region that supports Azure OpenAI for the chosen model. westeurope has gpt-4o-mini GA.')
+param aiLocation string = 'westeurope'
+
 var nameSuffix = toLower('${projectPrefix}-${env}')
 // Storage accounts: 3-24 chars, lowercase, alphanumeric only
 var storageAccountName = toLower(replace('${projectPrefix}${env}st', '-', ''))
@@ -41,6 +64,8 @@ var hostingPlanName = 'plan-${nameSuffix}'
 var appInsightsName = 'appi-${nameSuffix}'
 var logAnalyticsName = 'log-${nameSuffix}'
 var staticSiteName = 'swa-${nameSuffix}'
+var aiAccountName = 'aoai-${nameSuffix}'
+var aiDeploymentName = 'gate-${aiModelName}'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -73,6 +98,58 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     WorkspaceResourceId: logs.id
   }
 }
+
+// ---------------------------------------------------------------------------
+// Azure OpenAI (optional, for the AI relevance gate)
+// ---------------------------------------------------------------------------
+// The account and deployment are only created when `deployAiGate = true`.
+// The code-side budget tracker enforces the $aiMaxMonthlyUsd/month cap, so
+// leaving this enabled cannot exceed that ceiling.
+
+resource aiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = if (deployAiGate) {
+  name: aiAccountName
+  location: aiLocation
+  kind: 'OpenAI'
+  sku: {
+    name: 'S0'
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    customSubDomainName: aiAccountName
+    publicNetworkAccess: 'Enabled'
+    disableLocalAuth: false
+  }
+}
+
+resource aiDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = if (deployAiGate) {
+  parent: aiAccount
+  name: aiDeploymentName
+  sku: {
+    // GlobalStandard offers the cheapest per-token pricing and best availability.
+    name: 'GlobalStandard'
+    capacity: aiCapacityK
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: aiModelName
+      version: aiModelVersion
+    }
+    raiPolicyName: 'Microsoft.DefaultV2'
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+  }
+}
+
+// Fetch endpoint/key only when the account exists. ``.?`` covers the property
+// path; the ``listKeys`` call must be guarded by an explicit ternary because
+// Bicep disallows safe-dereference on instance function invocations (BCP322).
+// The ``deployAiGate`` condition makes the runtime access safe; the
+// BCP422 warning is a known static-analysis limitation for this pattern.
+#disable-next-line BCP422
+var aiKey = deployAiGate ? aiAccount.listKeys().key1 : ''
+var aiEndpoint = aiAccount.?properties.?endpoint ?? ''
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: hostingPlanName
@@ -142,6 +219,46 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'USER_AGENT'
           value: 'PatchFlux/1.0 (+https://github.com/OurDomainCeldric/PatchFlux)'
+        }
+        {
+          name: 'AI_GATE_ENABLED'
+          value: deployAiGate ? 'true' : 'false'
+        }
+        {
+          name: 'AI_MAX_MONTHLY_USD'
+          value: string(aiMaxMonthlyUsd)
+        }
+        {
+          name: 'AI_MAX_CALLS_PER_RUN'
+          value: '100'
+        }
+        {
+          name: 'AI_MAX_OUTPUT_TOKENS'
+          value: '150'
+        }
+        {
+          name: 'AI_BUDGET_TABLE_NAME'
+          value: 'AiBudget'
+        }
+        {
+          name: 'AZURE_OPENAI_ENDPOINT'
+          value: aiEndpoint
+        }
+        {
+          name: 'AZURE_OPENAI_API_KEY'
+          value: aiKey
+        }
+        {
+          name: 'AZURE_OPENAI_DEPLOYMENT'
+          value: deployAiGate ? aiDeploymentName : ''
+        }
+        {
+          name: 'AZURE_OPENAI_MODEL'
+          value: aiModelName
+        }
+        {
+          name: 'AZURE_OPENAI_API_VERSION'
+          value: aiApiVersion
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -300,3 +417,8 @@ resource staleIngestAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-pre
 
 output availabilityTestName string = availabilityTest.name
 output healthUrl string = healthUrl
+output aiGateEnabled bool = deployAiGate
+output aiAccountName string = deployAiGate ? aiAccount.name : ''
+output aiDeploymentName string = deployAiGate ? aiDeploymentName : ''
+output aiEndpoint string = aiEndpoint
+output aiMaxMonthlyUsd int = aiMaxMonthlyUsd
