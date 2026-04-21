@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -84,8 +84,8 @@ class NewsItem(BaseModel):
     @classmethod
     def _ensure_utc(cls, value: datetime) -> datetime:
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     @field_validator("products", "tags", mode="before")
     @classmethod

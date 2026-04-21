@@ -1,7 +1,7 @@
 """Legal guardrail + dedup hash tests for NewsItem."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -12,7 +12,7 @@ from models.news_item import NewsItem, compute_dedup_hash, normalize_url
 def _base_kwargs() -> dict:
     return dict(
         title="Patch KB12345 fixes issue X",
-        published_at=datetime(2026, 4, 20, 12, 0, tzinfo=timezone.utc),
+        published_at=datetime(2026, 4, 20, 12, 0, tzinfo=UTC),
         source_id="m365-roadmap",
         source_name="Microsoft 365 Roadmap",
         canonical_url="https://example.com/path/article",
@@ -76,4 +76,4 @@ def test_naive_datetime_assumed_utc():
     kwargs = _base_kwargs()
     kwargs["published_at"] = datetime(2026, 4, 20, 12, 0)
     item = NewsItem(**kwargs)
-    assert item.published_at.tzinfo == timezone.utc
+    assert item.published_at.tzinfo == UTC

@@ -26,14 +26,13 @@ import logging
 import time
 import traceback
 from collections.abc import Iterable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from xml.sax.saxutils import escape as xml_escape
 
 import azure.functions as func
 
 from config import get_settings
 from priority import compute_priority
-from topics import compute_topics
 from sources.azure_updates import AzureUpdatesAdapter
 from sources.base import SourceAdapter
 from sources.bleeping_computer import BleepingComputerAdapter
@@ -49,6 +48,7 @@ from sources.msrc import MSRCAdapter
 from sources.tech_community import TechCommunityAdapter
 from sources.windows_blog import WindowsBlogAdapter, WindowsITProBlogAdapter
 from storage.table_client import NewsStore
+from topics import compute_topics
 
 log = logging.getLogger(__name__)
 
@@ -127,10 +127,7 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
     store = _store()
     store.ensure_tables()
 
-    if source_ids is None:
-        adapters = _all_adapters()
-    else:
-        adapters = _adapters_matching(source_ids)
+    adapters = _all_adapters() if source_ids is None else _adapters_matching(source_ids)
 
     totals: dict[str, int] = {}
 
@@ -259,16 +256,16 @@ def _parse_since(value: str | None) -> datetime | None:
     raw = value.strip()
     # Accept "7d", "24h", or an ISO 8601 date / datetime.
     if raw.endswith("d") and raw[:-1].isdigit():
-        return datetime.now(timezone.utc) - timedelta(days=int(raw[:-1]))
+        return datetime.now(UTC) - timedelta(days=int(raw[:-1]))
     if raw.endswith("h") and raw[:-1].isdigit():
-        return datetime.now(timezone.utc) - timedelta(hours=int(raw[:-1]))
+        return datetime.now(UTC) - timedelta(hours=int(raw[:-1]))
     try:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def _parse_bool(value: str | None) -> bool:
@@ -475,7 +472,7 @@ def api_hot(req: func.HttpRequest) -> func.HttpResponse:
     if language not in (None, "de", "en"):
         language = None
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     store = _store()
     # Scan up to ~500 recent rows; priorities are computed post-query.
     page = store.query_page(
@@ -498,14 +495,14 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
     store = _store()
     stale: list[str] = []
     storage_ok = True
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         for ent in store.list_source_health():
             last_fetch = ent.get("LastFetchAt")
             status = ent.get("LastStatus") or ""
             if (
                 not isinstance(last_fetch, datetime)
-                or (now - last_fetch.astimezone(timezone.utc)) > STALE_WINDOW
+                or (now - last_fetch.astimezone(UTC)) > STALE_WINDOW
                 or status == "error"
             ):
                 stale.append(str(ent.get("RowKey")))
@@ -535,8 +532,8 @@ def _feed_items(limit: int = 50) -> list[dict]:
 def _rfc822(dt: datetime) -> str:
     # Azure Table timestamps come back aware; be defensive.
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).strftime("%a, %d %b %Y %H:%M:%S +0000")
 
 
 @app.function_name(name="api_feed_rss")
@@ -544,7 +541,7 @@ def _rfc822(dt: datetime) -> str:
 def api_feed_rss(req: func.HttpRequest) -> func.HttpResponse:
     """RSS 2.0 feed – headline + URL + source + pubDate only. No description."""
     items = _feed_items(limit=50)
-    now_str = _rfc822(datetime.now(timezone.utc))
+    now_str = _rfc822(datetime.now(UTC))
 
     parts: list[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -592,7 +589,7 @@ def api_feed_rss(req: func.HttpRequest) -> func.HttpResponse:
 def api_feed_atom(req: func.HttpRequest) -> func.HttpResponse:
     """Atom 1.0 feed – headline + URL + source + pubDate only."""
     items = _feed_items(limit=50)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     parts: list[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -64,7 +64,7 @@ def parse_kev_payload(body: bytes) -> list[NewsItem]:
             continue
         try:
             published = datetime.strptime(date_added, "%Y-%m-%d").replace(
-                tzinfo=timezone.utc
+                tzinfo=UTC
             )
         except ValueError:
             continue

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import feedparser
 import httpx
@@ -61,7 +61,7 @@ def _parse_published(entry: feedparser.FeedParserDict) -> datetime | None:
     for key in ("published_parsed", "updated_parsed", "created_parsed"):
         value = entry.get(key)
         if value:
-            return datetime(*value[:6], tzinfo=timezone.utc)
+            return datetime(*value[:6], tzinfo=UTC)
     return None
 
 

@@ -1,7 +1,7 @@
 """Pagination cursor + query filter tests for the storage layer."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from storage.table_client import (
     _row_key,
@@ -21,8 +21,8 @@ def test_decode_cursor_rejects_garbage():
 
 
 def test_row_key_is_monotonic_and_newer_first():
-    older = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
-    newer = datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc)
+    older = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    newer = datetime(2026, 6, 1, 0, 0, tzinfo=UTC)
     rk_older = _row_key(older, "aabbccdd")
     rk_newer = _row_key(newer, "aabbccdd")
     # Newer item has SMALLER inverted timestamp, therefore smaller RowKey

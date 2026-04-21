@@ -17,7 +17,7 @@ import json
 import logging
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from azure.core.exceptions import ResourceExistsError
 from azure.data.tables import TableClient, TableServiceClient, UpdateMode
@@ -31,12 +31,12 @@ log = logging.getLogger(__name__)
 
 
 def _partition_key(published_at: datetime) -> str:
-    dt = published_at.astimezone(timezone.utc)
+    dt = published_at.astimezone(UTC)
     return f"{dt.year:04d}-{dt.month:02d}"
 
 
 def _row_key(published_at: datetime, dedup_hash: str) -> str:
-    ts = int(published_at.astimezone(timezone.utc).timestamp())
+    ts = int(published_at.astimezone(UTC).timestamp())
     inverted = _INVERTED_TS_BASE - ts
     return f"{inverted:010d}_{dedup_hash[:8]}"
 
@@ -55,7 +55,7 @@ def news_item_to_entity(item: NewsItem) -> dict:
         "Products": ",".join(item.products),
         "Tags": ",".join(item.tags),
         "Language": item.language,
-        "IngestedAt": datetime.now(timezone.utc),
+        "IngestedAt": datetime.now(UTC),
     }
 
 
@@ -157,7 +157,7 @@ class NewsStore:
         * ``deduped``    – collapse duplicates by DedupHash (first wins).
         * ``cursor``     – opaque token from a previous page; resume right after it.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start_year, start_month = now.year, now.month
         skip_row_key: str | None = None
 
@@ -208,7 +208,7 @@ class NewsStore:
                         continue
                     if since is not None:
                         pub = ent.get("PublishedAt")
-                        if isinstance(pub, datetime) and pub.astimezone(timezone.utc) < since:
+                        if isinstance(pub, datetime) and pub.astimezone(UTC) < since:
                             continue
                     if deduped:
                         h = ent.get("DedupHash")
@@ -259,7 +259,7 @@ class NewsStore:
         Used to drive the frontend filter dropdown.
         """
         counts: dict[str, int] = {}
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         year, month = now.year, now.month
         with self._news_client() as client:
             for _ in range(months_back):
@@ -296,7 +296,7 @@ class NewsStore:
         31 days to keep the tally cheap. Used by ``/api/topics``.
         """
         counts: dict[str, int] = {}
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=max(1, days))
         year, month = now.year, now.month
         # For <=31-day windows we only ever need the current + previous month.
@@ -350,7 +350,7 @@ class NewsStore:
         entity: dict[str, object] = {
             "PartitionKey": "sources",
             "RowKey": source_id,
-            "LastFetchAt": datetime.now(timezone.utc),
+            "LastFetchAt": datetime.now(UTC),
             "LastStatus": status,
             "LastError": (error or "")[:500],
             "ETag": etag or "",
