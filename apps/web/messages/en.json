@@ -1,0 +1,42 @@
+{
+  "common": {
+    "brand": "OmlorsNewsBot",
+    "tagline": "Independent aggregator for Microsoft & IT news",
+    "languageLabel": "Language",
+    "switchTo": "Switch to {language}"
+  },
+  "nav": {
+    "news": "News",
+    "sources": "Sources"
+  },
+  "filters": {
+    "heading": "Filters",
+    "allSources": "All sources",
+    "allProducts": "All products",
+    "source": "Source",
+    "product": "Product",
+    "reset": "Reset"
+  },
+  "news": {
+    "empty": "No items yet. The ingest job runs daily at 05:00 UTC.",
+    "loading": "Loading news …",
+    "openOriginal": "Open original",
+    "openOriginalAria": "Open original article at {source} in a new tab",
+    "publishedAt": "Published on {date}",
+    "retry": "Retry",
+    "loadError": "Could not load news items."
+  },
+  "sources": {
+    "heading": "Sources & status",
+    "description": "Feed fetch status. All sources are consumed exclusively via official APIs and RSS/Atom feeds.",
+    "lastFetch": "Last fetch",
+    "status": "Status",
+    "never": "never"
+  },
+  "footer": {
+    "disclaimer": "OmlorsNewsBot is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
+    "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
+    "imprint": "Imprint",
+    "privacy": "Privacy"
+  }
+}

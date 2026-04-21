@@ -1,0 +1,58 @@
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Editors ----
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.*.local
+
+# ---- Python / Azure Functions ----
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Azure Functions local
+local.settings.json
+bin/
+obj/
+
+# ---- Azurite (local Table/Blob emulator) ----
+__azurite_db_*__.json
+__blobstorage__/
+__queuestorage__/
+__tablestorage__/
+.azurite/
+
+# ---- Build / misc ----
+dist/
+build/
+*.log
+coverage/
+
+# ---- Deploy artifacts ----
+deploy.zip
+functions.zip
+*.tsbuildinfo

@@ -1,0 +1,42 @@
+{
+  "common": {
+    "brand": "OmlorsNewsBot",
+    "tagline": "Unabhängiger Aggregator für Microsoft- & IT-News",
+    "languageLabel": "Sprache",
+    "switchTo": "Zu {language} wechseln"
+  },
+  "nav": {
+    "news": "News",
+    "sources": "Quellen"
+  },
+  "filters": {
+    "heading": "Filter",
+    "allSources": "Alle Quellen",
+    "allProducts": "Alle Produkte",
+    "source": "Quelle",
+    "product": "Produkt",
+    "reset": "Zurücksetzen"
+  },
+  "news": {
+    "empty": "Noch keine Meldungen. Der Ingest-Job läuft täglich um 05:00 UTC.",
+    "loading": "Lade Meldungen …",
+    "openOriginal": "Zur Originalquelle",
+    "openOriginalAria": "Originalartikel bei {source} in neuem Tab öffnen",
+    "publishedAt": "Veröffentlicht am {date}",
+    "retry": "Erneut versuchen",
+    "loadError": "Meldungen konnten nicht geladen werden."
+  },
+  "sources": {
+    "heading": "Quellen & Status",
+    "description": "Status der Feed-Abrufe. Alle Quellen werden ausschließlich über offizielle APIs und RSS-/Atom-Feeds abgerufen.",
+    "lastFetch": "Letzter Abruf",
+    "status": "Status",
+    "never": "noch nie"
+  },
+  "footer": {
+    "disclaimer": "OmlorsNewsBot ist ein unabhängiges Drittanbieter-Tool. Nicht verbunden mit, unterstützt von oder in irgendeiner Weise offiziell verknüpft mit Microsoft, Heise, Borns IT-Blog oder anderen genannten Verlagen. Alle Markenzeichen gehören ihren jeweiligen Inhabern.",
+    "legalNotice": "Es werden ausschließlich Metadaten (Überschrift, Datum, Quelle, Link) gespeichert. Jede Meldung verlinkt auf den Originalartikel beim jeweiligen Verlag.",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz"
+  }
+}

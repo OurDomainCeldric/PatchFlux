@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "NEWS_TABLE_CONNECTION": "UseDevelopmentStorage=true",
+    "NEWS_TABLE_NAME": "NewsItems",
+    "SOURCE_HEALTH_TABLE_NAME": "SourceHealth",
+    "USER_AGENT": "OmlorsNewsBot/1.0 (+https://github.com/OmlorsNewsBot/OmlorsNewsBot)"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  }
+}

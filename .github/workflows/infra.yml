@@ -1,0 +1,48 @@
+name: Deploy Infrastructure (Bicep)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+
+permissions:
+  contents: read
+
+env:
+  AZURE_SUBSCRIPTION_ID: 4d267595-24a9-46d3-aa30-580f3de0af1f
+  AZURE_RESOURCE_GROUP: RG-NewsBot
+  AZURE_LOCATION: westeurope
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure resource group
+        run: |
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+          az group create --name "$AZURE_RESOURCE_GROUP" --location "$AZURE_LOCATION"
+
+      - name: Validate Bicep
+        run: |
+          az deployment group validate \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam
+
+      - name: Deploy Bicep
+        run: |
+          az deployment group create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --name "omlorsnews-$(date +%Y%m%d%H%M%S)"

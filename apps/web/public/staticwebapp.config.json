@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "routes": [
+    {
+      "route": "/",
+      "redirect": "/de/",
+      "statusCode": 302
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/404.html",
+    "exclude": ["/api/*", "/_next/*", "/*.{png,jpg,jpeg,svg,ico,webp,avif,js,css,map,txt,xml,json,woff,woff2}"]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
+  }
+}
