@@ -9,7 +9,7 @@
 //   * Static Web App (Free)           — hosts the Next.js frontend
 //
 // Target scope : resourceGroup
-// Target RG    : RG-NewsBot   (subscription 4d267595-24a9-46d3-aa30-580f3de0af1f)
+// Target RG    : RG-NewsBot
 
 targetScope = 'resourceGroup'
 
@@ -29,6 +29,13 @@ param repositoryUrl string = ''
 
 @description('GitHub branch for the Static Web App.')
 param repositoryBranch string = 'main'
+
+@description('Allowed origins for Function App CORS. Keep this list tight — the public site(s) and a localhost entry for dev only.')
+param functionAppAllowedOrigins array = [
+  'https://patchflux.de'
+  'https://www.patchflux.de'
+  'http://localhost:3000'
+]
 
 @description('Optional email address for operational alerts (availability, stale ingest). Leave empty to skip alert wiring.')
 param alertEmail string = ''
@@ -180,7 +187,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       minTlsVersion: '1.2'
       http20Enabled: true
       cors: {
-        allowedOrigins: [ '*' ]
+        allowedOrigins: functionAppAllowedOrigins
         supportCredentials: false
       }
       appSettings: [
@@ -289,8 +296,10 @@ resource staticSite 'Microsoft.Web/staticSites@2023-12-01' = {
 
 // NOTE: Static Web Apps "linked backends" (transparent /api/* proxy) require
 // the Standard tier. To stay on the Free tier, the frontend talks to the
-// Function App directly. CORS on the Function App is open ('*') because all
-// endpoints are anonymous and read-only. Set the Next.js build-time env var
+// Function App directly. Function App CORS is scoped to the public site
+// origins (see ``functionAppAllowedOrigins``) rather than '*' so random
+// third-party pages cannot read our API from a user's browser. Set the
+// Next.js build-time env var
 //   NEXT_PUBLIC_API_BASE_URL = https://<functionApp>.azurewebsites.net/api
 // so the static export bakes the correct absolute URL.
 

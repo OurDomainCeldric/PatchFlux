@@ -23,8 +23,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
-import traceback
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from xml.sax.saxutils import escape as xml_escape
@@ -80,6 +80,31 @@ LOW_FREQ_SOURCES = {"m365-roadmap", "azure-updates"}
 # If a source has not been fetched successfully within this window, /health
 # reports it as stale.
 STALE_WINDOW = timedelta(hours=26)
+
+# Adapter error messages often embed absolute file paths, IP addresses,
+# Python-package internals and line numbers; none of that is useful to the
+# public. Strip aggressively before persisting or returning.
+_ERROR_PATH_PATTERN = re.compile(
+    r"(/[^\s'\"]*\.py[^\s'\"]*|[A-Za-z]:\\[^\s'\"]+|line\s+\d+|File\s+\"[^\"]+\")",
+    re.IGNORECASE,
+)
+
+
+def _safe_error_summary(exc: BaseException | str | None, *, limit: int = 120) -> str | None:
+    """Return a short, path-free summary suitable for public display.
+
+    - Keeps the exception class and a brief message.
+    - Removes file paths, ``line NN`` markers and raw tracebacks.
+    - Truncates to ``limit`` characters.
+    """
+    if exc is None:
+        return None
+    message = f"{type(exc).__name__}: {exc}" if isinstance(exc, BaseException) else str(exc)
+    message = _ERROR_PATH_PATTERN.sub("", message)
+    message = " ".join(message.split())
+    if len(message) > limit:
+        message = message[: limit - 1].rstrip() + "\u2026"
+    return message or None
 
 
 def _store() -> NewsStore:
@@ -169,12 +194,15 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
                 last_modified=last_modified,
             )
         except Exception as exc:  # noqa: BLE001 — never let one bad source kill the run
+            # Full stack trace goes to App Insights only; the public
+            # ``/api/sources`` endpoint must never expose file paths,
+            # library internals or line numbers. Store a short category so
+            # operators can still differentiate error classes in logs.
             log.exception("Adapter %s crashed", adapter.source_id)
-            tb = traceback.format_exc(limit=3)[:500]
             store.record_source_health(
                 source_id=adapter.source_id,
                 status="error",
-                error=f"{exc}\n{tb}",
+                error=_safe_error_summary(exc),
                 items_last_run=0,
             )
             totals[adapter.source_id] = 0
@@ -195,7 +223,7 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
         store.record_source_health(
             source_id=adapter.source_id,
             status=result.status,
-            error=result.error,
+            error=_safe_error_summary(result.error),
             etag=result.etag,
             last_modified=result.last_modified,
             items_last_run=written,
@@ -451,7 +479,9 @@ def api_sources(req: func.HttpRequest) -> func.HttpResponse:
             "sourceId": ent.get("RowKey"),
             "lastFetchAt": last_fetch,
             "lastStatus": ent.get("LastStatus"),
-            "lastError": ent.get("LastError") or None,
+            # Defence in depth: any legacy rows (pre-sanitizer) are also
+            # scrubbed here before reaching the client.
+            "lastError": _safe_error_summary(ent.get("LastError") or None),
         }
         if include_counts:
             record["itemsLastRun"] = int(ent.get("ItemsLastRun") or 0)

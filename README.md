@@ -59,7 +59,7 @@ func start
 
 ## Deployment (Azure)
 
-- **Subscription:** `4d267595-24a9-46d3-aa30-580f3de0af1f`
+- **Subscription:** stored as the `AZURE_SUBSCRIPTION_ID` GitHub Actions secret; export `AZURE_SUBSCRIPTION_ID` locally for manual `az` runs.
 - **Resource Group:** `RG-NewsBot`
 - **Region:** `westeurope`
 

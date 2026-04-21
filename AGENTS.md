@@ -10,7 +10,7 @@ This repository has **strict legal guardrails**. Read this file before making ch
 
 - `apps/web/` — Next.js 15 (App Router, Static Export), TypeScript, Tailwind, shadcn/ui, `next-intl` (DE/EN)
 - `apps/functions/` — Azure Functions, Python 3.11, v2 programming model
-- `infra/` — Bicep templates (target: RG `RG-NewsBot`, region `westeurope`, subscription `4d267595-24a9-46d3-aa30-580f3de0af1f`)
+- `infra/` — Bicep templates (target: RG `RG-NewsBot`, region `westeurope`; subscription ID is stored as the `AZURE_SUBSCRIPTION_ID` GitHub Actions secret)
 - `.github/workflows/` — CI/CD
 
 ## Hard rules (do not violate)
@@ -31,7 +31,7 @@ This repository has **strict legal guardrails**. Read this file before making ch
 
 ## Infrastructure defaults
 
-- Subscription: `4d267595-24a9-46d3-aa30-580f3de0af1f`
+- Subscription: stored as the `AZURE_SUBSCRIPTION_ID` GitHub Actions secret; for local `az` use `$env:AZURE_SUBSCRIPTION_ID`
 - Resource group: `RG-NewsBot`
 - Region: `westeurope`
 - Stay on free / consumption tiers until told otherwise.

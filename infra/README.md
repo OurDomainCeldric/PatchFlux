@@ -4,7 +4,7 @@ All Azure resources live in a single resource group and are defined in [main.bic
 
 ## Targets
 
-- **Subscription:** `4d267595-24a9-46d3-aa30-580f3de0af1f`
+- **Subscription:** stored as the `AZURE_SUBSCRIPTION_ID` GitHub Actions secret; for local `az` runs, `$env:AZURE_SUBSCRIPTION_ID = "<your-sub-id>"`.
 - **Resource group:** `RG-NewsBot`
 - **Region:** `westeurope`
 
@@ -38,7 +38,7 @@ Run from the repo root in PowerShell:
 
 ```powershell
 az login
-az account set --subscription 4d267595-24a9-46d3-aa30-580f3de0af1f
+az account set --subscription $env:AZURE_SUBSCRIPTION_ID
 az group create --name RG-NewsBot --location westeurope
 az deployment group create `
   --resource-group RG-NewsBot `
@@ -58,7 +58,7 @@ Create the following repo secrets:
 
 | Secret | How to obtain |
 |---|---|
-| `AZURE_CREDENTIALS` | `az ad sp create-for-rbac --name "omlorsnews-ci" --role contributor --scopes /subscriptions/4d267595-24a9-46d3-aa30-580f3de0af1f/resourceGroups/RG-NewsBot --sdk-auth` |
+| `AZURE_CREDENTIALS` | `az ad sp create-for-rbac --name "omlorsnews-ci" --role contributor --scopes /subscriptions/$env:AZURE_SUBSCRIPTION_ID/resourceGroups/RG-NewsBot --sdk-auth` |
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <staticSiteName> --query "properties.apiKey" -o tsv` |
 | `AZURE_FUNCTIONAPP_NAME` | Output `functionAppName` from the deployment |
 | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | `az functionapp deployment list-publishing-profiles --resource-group RG-NewsBot --name <functionAppName> --xml` |

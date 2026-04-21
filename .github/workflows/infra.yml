@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_SUBSCRIPTION_ID: 4d267595-24a9-46d3-aa30-580f3de0af1f
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   AZURE_RESOURCE_GROUP: RG-NewsBot
   AZURE_LOCATION: westeurope
 
