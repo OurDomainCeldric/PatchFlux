@@ -65,14 +65,6 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
             }
           >
             {label}
-            {key === "community" && (
-              <span
-                aria-hidden="true"
-                className="ml-1.5 rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-              >
-                β
-              </span>
-            )}
           </button>
         );
       })}
