@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class AzureUpdatesAdapter(SourceAdapter):
     source_id = "azure-updates"
     source_name = "Azure Updates"
+    source_tier = 1
     feed_url = "https://www.microsoft.com/releasecommunications/api/v2/azure/rss"
 
     def fetch(

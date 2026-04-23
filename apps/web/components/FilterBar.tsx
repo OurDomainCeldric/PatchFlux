@@ -104,6 +104,7 @@ function advancedActiveCount(state: FilterState): number {
 
 interface FilterBarProps {
   pathname: string;
+  community?: boolean;
 }
 
 /** Pill-style toggle button with aria-pressed. */
@@ -132,7 +133,7 @@ function TogglePill({
   );
 }
 
-export function FilterBar({ pathname }: FilterBarProps) {
+export function FilterBar({ pathname, community = false }: FilterBarProps) {
   const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -318,18 +319,20 @@ export function FilterBar({ pathname }: FilterBarProps) {
           />
         </label>
 
-        <button
-          type="button"
-          aria-pressed={current.onlyHot}
-          onClick={() => toggleBool("onlyHot")}
-          className={
-            current.onlyHot
-              ? "rounded-full border border-red-600 bg-red-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-red-700"
-              : "rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          }
-        >
-          {t("filters.onlyHot")}
-        </button>
+        {!community && (
+          <button
+            type="button"
+            aria-pressed={current.onlyHot}
+            onClick={() => toggleBool("onlyHot")}
+            className={
+              current.onlyHot
+                ? "rounded-full border border-red-600 bg-red-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-red-700"
+                : "rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }
+          >
+            {t("filters.onlyHot")}
+          </button>
+        )}
 
         {/* Advanced-filters icon toggle (dropdown) ------------------- */}
         <div className="relative" ref={advancedRef}>

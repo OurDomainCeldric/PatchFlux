@@ -17,6 +17,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class HeiseAdapter(SourceAdapter):
     source_id = "heise"
     source_name = "heise online"
+    source_tier = 2
     # Heise's public newsticker Atom feed. We filter locally by Microsoft-
     # related keywords in the title to honour our topical scope without
     # storing any snippets/descriptions.

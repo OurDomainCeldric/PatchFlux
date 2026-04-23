@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class MSSecurityBlogAdapter(SourceAdapter):
     source_id = "ms-security-blog"
     source_name = "Microsoft Security Blog"
+    source_tier = 1
     feed_url = "https://www.microsoft.com/en-us/security/blog/feed/"
 
     def fetch(

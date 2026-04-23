@@ -14,6 +14,8 @@ from sources.krebs import KrebsAdapter
 from sources.m365_roadmap import M365RoadmapAdapter
 from sources.ms_security_blog import MSSecurityBlogAdapter
 from sources.msrc import MSRCAdapter
+from sources.reddit_microsoft import RedditMicrosoftAdapter
+from sources.reddit_sysadmin import RedditSysadminAdapter
 from sources.tech_community import TechCommunityAdapter
 from sources.windows_blog import WindowsBlogAdapter, WindowsITProBlogAdapter
 
@@ -32,6 +34,8 @@ ALL_ADAPTERS = [
     KrebsAdapter,
     HeiseAdapter,
     BornsITAdapter,
+    RedditSysadminAdapter,
+    RedditMicrosoftAdapter,
 ]
 
 SOURCE_ID_RE = re.compile(r"^[a-z0-9-]+$")
@@ -52,6 +56,24 @@ def test_feed_urls_look_reasonable():
         url = cls.feed_url
         assert url.startswith("https://"), f"{cls.__name__}: non-https feed URL"
         assert " " not in url, f"{cls.__name__}: whitespace in feed URL"
+
+
+def test_source_tiers_valid():
+    """Every adapter must declare a source_tier in {1, 2, 3}."""
+    for cls in ALL_ADAPTERS:
+        tier = getattr(cls, "source_tier", None)
+        assert tier in {1, 2, 3}, f"{cls.__name__}: source_tier must be 1, 2 or 3 (got {tier!r})"
+
+
+def test_community_adapters_declare_keyword_filter():
+    """Tier-3 adapters for general communities must filter by title keywords."""
+    from sources._rss import MICROSOFT_TITLE_KEYWORDS
+
+    community = [RedditSysadminAdapter]
+    for cls in community:
+        kws = getattr(cls, "title_keywords", None)
+        assert kws, f"{cls.__name__}: missing title_keywords"
+        assert "microsoft" in kws, f"{cls.__name__}: no 'microsoft' keyword"
 
 
 def test_general_news_adapters_declare_microsoft_keyword_filter():

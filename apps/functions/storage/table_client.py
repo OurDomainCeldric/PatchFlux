@@ -50,6 +50,7 @@ def news_item_to_entity(item: NewsItem) -> dict:
         "PublishedAt": item.published_at,
         "SourceId": item.source_id,
         "SourceName": item.source_name,
+        "SourceTier": item.source_tier,
         "Author": item.author or "",
         "CanonicalUrl": str(item.canonical_url),
         "Products": ",".join(item.products),

@@ -4,6 +4,7 @@ export interface NewsItem {
   publishedAt: string;
   sourceId: string;
   sourceName: string;
+  sourceTier: 1 | 2 | 3;
   author: string | null;
   url: string;
   products: string[];
@@ -78,6 +79,8 @@ export interface NewsFilters {
   minPriority?: 1 | 2;
   hot?: boolean;
   topics?: string[];
+  /** true = Community tab (tier 3 only); false = News & Blogs (tier 1+2 only) */
+  community?: boolean;
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
@@ -116,6 +119,8 @@ function buildNewsQuery(params: NewsFilters): URLSearchParams {
   if (params.hot) search.set("hot", "1");
   if (params.topics && params.topics.length > 0)
     search.set("topics", params.topics.join(","));
+  if (params.community !== undefined)
+    search.set("community", params.community ? "1" : "0");
   return search;
 }
 

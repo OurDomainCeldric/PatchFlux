@@ -82,6 +82,9 @@ class NewsItem(BaseModel):
     products: tuple[str, ...] = Field(default_factory=tuple)
     tags: tuple[str, ...] = Field(default_factory=tuple)
     language: Literal["de", "en"] = "en"
+    # Our own editorial trust tier — not third-party content.
+    # 1=Official  2=Press  3=Community
+    source_tier: int = Field(default=2, ge=1, le=3)
 
     @field_validator("published_at")
     @classmethod

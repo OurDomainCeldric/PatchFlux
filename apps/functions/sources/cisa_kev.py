@@ -113,6 +113,7 @@ def parse_kev_payload(body: bytes) -> list[NewsItem]:
 class CISAKEVAdapter(SourceAdapter):
     source_id = "cisa-kev"
     source_name = "CISA KEV"
+    source_tier = 2
     feed_url = _FEED_URL
 
     def fetch(

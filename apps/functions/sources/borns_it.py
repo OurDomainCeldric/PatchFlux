@@ -12,6 +12,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class BornsITAdapter(SourceAdapter):
     source_id = "borns-it"
     source_name = "Borns IT- und Windows-Blog"
+    source_tier = 2
     feed_url = "https://www.borncity.com/blog/feed/"
     # The blog covers general IT news too (Linux, Apple, consumer electronics).
     # Restrict to Microsoft-scoped titles.

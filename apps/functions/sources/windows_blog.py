@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class WindowsBlogAdapter(SourceAdapter):
     source_id = "windows-blog"
     source_name = "Windows Blog"
+    source_tier = 1
     feed_url = "https://blogs.windows.com/feed"
 
     def fetch(
@@ -31,6 +32,7 @@ class WindowsBlogAdapter(SourceAdapter):
 class WindowsITProBlogAdapter(SourceAdapter):
     source_id = "windows-it-pro-blog"
     source_name = "Windows IT Pro Blog"
+    source_tier = 1
     feed_url = "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=Windows-ITPro-Blog"
 
     def fetch(

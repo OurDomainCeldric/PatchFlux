@@ -12,6 +12,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class CISAAdvisoriesAdapter(SourceAdapter):
     source_id = "cisa-advisories"
     source_name = "CISA Advisories"
+    source_tier = 2
     feed_url = "https://www.cisa.gov/cybersecurity-advisories/all.xml"
     # CISA publishes advisories for many vendors (ICS, Fortinet, Cisco, …).
     # Filter to Microsoft scope by title keyword, mirroring the other general

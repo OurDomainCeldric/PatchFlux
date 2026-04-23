@@ -33,6 +33,11 @@ class SourceAdapter(ABC):
     source_id: str
     #: Human-readable name shown in the UI.
     source_name: str
+    #: Editorial trust tier:
+    #:   1 – Official (vendor-operated / government)
+    #:   2 – Established press (editorial standards, clear authorship)
+    #:   3 – Community (forums, aggregators, social RSS)
+    source_tier: int = 2
 
     @abstractmethod
     def fetch(

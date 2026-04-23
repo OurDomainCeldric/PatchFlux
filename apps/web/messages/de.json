@@ -11,6 +11,11 @@
     "toggleTheme": "Design umschalten",
     "skipToContent": "Zum Inhalt springen"
   },
+  "tabs": {
+    "ariaLabel": "Feed-Auswahl",
+    "news": "News & Blogs",
+    "community": "Community"
+  },
   "nav": {
     "news": "News",
     "sources": "Quellen",

@@ -47,6 +47,8 @@ from sources.krebs import KrebsAdapter
 from sources.m365_roadmap import M365RoadmapAdapter
 from sources.ms_security_blog import MSSecurityBlogAdapter
 from sources.msrc import MSRCAdapter
+from sources.reddit_microsoft import RedditMicrosoftAdapter
+from sources.reddit_sysadmin import RedditSysadminAdapter
 from sources.tech_community import TechCommunityAdapter
 from sources.windows_blog import WindowsBlogAdapter, WindowsITProBlogAdapter
 from storage.table_client import NewsStore
@@ -74,6 +76,8 @@ MID_FREQ_SOURCES = {
     "cisa-advisories",
     "bleeping-computer",
     "krebs",
+    "reddit-sysadmin",
+    "reddit-microsoft",
 }
 LOW_FREQ_SOURCES = {"m365-roadmap", "azure-updates"}
 
@@ -140,6 +144,8 @@ def _all_adapters() -> list[SourceAdapter]:
         KrebsAdapter(),
         HeiseAdapter(),
         BornsITAdapter(),
+        RedditSysadminAdapter(),
+        RedditMicrosoftAdapter(),
     ]
 
 
@@ -348,6 +354,7 @@ def _serialize_entity(ent: dict) -> dict:
         "publishedAt": _iso(ent.get("PublishedAt")),
         "sourceId": source_id,
         "sourceName": ent.get("SourceName"),
+        "sourceTier": int(ent.get("SourceTier") or 2),
         "author": ent.get("Author") or None,
         "url": ent.get("CanonicalUrl"),
         "products": [p for p in (ent.get("Products") or "").split(",") if p],
@@ -400,6 +407,11 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     search = (req.params.get("q") or "").strip() or None
     deduped = _parse_bool(req.params.get("deduped"))
     cursor = req.params.get("cursor") or None
+    # community=1 → Tier-3 only; community=0 → Tier 1+2 only; absent → all
+    community_raw = req.params.get("community")
+    community_filter: int | None = None  # None = no tier filter
+    if community_raw is not None:
+        community_filter = 3 if _parse_bool(community_raw) else 2  # 2 = max for news+blogs
     min_priority = _parse_int(
         req.params.get("min_priority"), default=0, minimum=0, maximum=2
     )
@@ -412,9 +424,9 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
 
     store = _store()
     start = time.monotonic()
-    # When filtering by priority or topics we need to scan more raw rows
-    # because both filters are applied post-query.
-    need_post_filter = min_priority > 0 or bool(topics_filter)
+    # When filtering by priority, topics, or tier we need to scan more raw rows
+    # because all three filters are applied post-query.
+    need_post_filter = min_priority > 0 or bool(topics_filter) or community_filter is not None
     raw_limit = limit if not need_post_filter else min(limit * 10, 500)
     page = store.query_page(
         limit=raw_limit,
@@ -429,6 +441,11 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     duration_ms = int((time.monotonic() - start) * 1000)
 
     serialized = [_serialize_entity(e) for e in page.items]
+    if community_filter is not None:
+        if community_filter == 3:
+            serialized = [i for i in serialized if i["sourceTier"] == 3]
+        else:
+            serialized = [i for i in serialized if i["sourceTier"] <= 2]
     if min_priority > 0:
         serialized = [i for i in serialized if i["priority"] >= min_priority]
     if topics_filter:

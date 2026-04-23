@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class TechCommunityAdapter(SourceAdapter):
     source_id = "ms-tech-community"
     source_name = "Microsoft Tech Community"
+    source_tier = 1
     # Khoros board RSS (legacy path still served by the TC CDN).
     feed_url = "https://techcommunity.microsoft.com/t5/s/gxcuf89792/rss/board?board.id=MicrosoftTeamsBlog"
 

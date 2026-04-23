@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class GitHubBlogAdapter(SourceAdapter):
     source_id = "github-blog"
     source_name = "GitHub Changelog"
+    source_tier = 1
     # Changelog feed has a much higher signal-to-noise ratio than the main
     # blog for "new features / changes" classification.
     feed_url = "https://github.blog/changelog/feed/"

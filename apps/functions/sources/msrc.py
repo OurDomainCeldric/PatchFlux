@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class MSRCAdapter(SourceAdapter):
     source_id = "msrc"
     source_name = "Microsoft Security Response Center"
+    source_tier = 1
     # Official Security Update Guide RSS (CVE advisories).
     feed_url = "https://api.msrc.microsoft.com/update-guide/rss"
 

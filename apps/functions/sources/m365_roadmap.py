@@ -8,6 +8,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class M365RoadmapAdapter(SourceAdapter):
     source_id = "m365-roadmap"
     source_name = "Microsoft 365 Roadmap"
+    source_tier = 1
     feed_url = "https://www.microsoft.com/releasecommunications/api/v2/m365/rss"
 
     def fetch(

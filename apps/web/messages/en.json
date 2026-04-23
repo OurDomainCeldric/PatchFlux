@@ -11,6 +11,11 @@
     "toggleTheme": "Toggle theme",
     "skipToContent": "Skip to content"
   },
+  "tabs": {
+    "ariaLabel": "Feed type",
+    "news": "News & Blogs",
+    "community": "Community"
+  },
   "nav": {
     "news": "News",
     "sources": "Sources",

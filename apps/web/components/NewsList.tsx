@@ -15,6 +15,7 @@ const PAGE_SIZE = 50;
 
 interface NewsListProps {
   pathname: string;
+  community?: boolean;
 }
 
 function groupByDate(items: NewsItem[], formatter: Intl.DateTimeFormat) {
@@ -29,7 +30,7 @@ function groupByDate(items: NewsItem[], formatter: Intl.DateTimeFormat) {
   return Array.from(groups.entries());
 }
 
-export function NewsList({ pathname }: NewsListProps) {
+export function NewsList({ pathname, community = false }: NewsListProps) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -54,10 +55,13 @@ export function NewsList({ pathname }: NewsListProps) {
     if (filters.since) opts.since = filters.since;
     if (filters.q) opts.q = filters.q;
     if (filters.deduped) opts.deduped = true;
-    if (filters.onlyHot) opts.hot = true;
+    // Community tab never passes hot=true (priority not relevant for forum posts)
+    if (!community && filters.onlyHot) opts.hot = true;
     if (filters.topics.size > 0) opts.topics = Array.from(filters.topics);
+    // Always pass community flag so the API applies the right tier filter
+    opts.community = community;
     return opts;
-  }, [filters]);
+  }, [filters, community]);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -190,8 +194,8 @@ export function NewsList({ pathname }: NewsListProps) {
           </h2>
           <ul className="space-y-3">
             {bucket.map((item) => {
-              const hot = item.priority >= 2;
-              const notable = item.priority === 1;
+              const hot = !community && item.priority >= 2;
+              const notable = !community && item.priority === 1;
               return (
               <li
                 key={item.id}

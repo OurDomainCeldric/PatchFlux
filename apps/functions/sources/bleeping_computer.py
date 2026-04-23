@@ -12,6 +12,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class BleepingComputerAdapter(SourceAdapter):
     source_id = "bleeping-computer"
     source_name = "BleepingComputer"
+    source_tier = 2
     feed_url = "https://www.bleepingcomputer.com/feed/"
     # Filter to the project's Microsoft/IT scope using the shared keyword list.
     title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS

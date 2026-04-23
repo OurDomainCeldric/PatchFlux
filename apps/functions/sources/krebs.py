@@ -12,6 +12,7 @@ from sources.base import SourceAdapter, SourceFetchResult
 class KrebsAdapter(SourceAdapter):
     source_id = "krebs"
     source_name = "Krebs on Security"
+    source_tier = 2
     feed_url = "https://krebsonsecurity.com/feed/"
     # PatchFlux is Microsoft-scoped; Krebs covers general US security
     # journalism, so filter to our topical scope by title keyword.
