@@ -41,7 +41,7 @@ If AI-based fact extraction is introduced later:
 ## 5. Trademarks & branding
 
 - The UI and metadata make clear that this is an **independent third-party tool**.
-- **No logos, wordmarks, or brand assets** of Microsoft, Heise, Borns IT-Blog, or any other publisher are used.
+- **No logos, wordmarks, or brand assets** of Microsoft, Reddit, Heise, Borns IT-Blog, or any other publisher/forum are used.
 - Source names appear as **plain text** only.
 
 ## 6. Outbound links
