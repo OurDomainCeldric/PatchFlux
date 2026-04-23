@@ -9,12 +9,12 @@ export async function SiteHeader() {
   const currentLocale = await getLocale();
 
   return (
-    <header className="border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
+    <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl dark:border-slate-800/60 dark:bg-[#09090b]/70 supports-[backdrop-filter]:bg-white/60">
       <h1 className="sr-only">{t("common.brand")}</h1>
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-        <Link href={`/${currentLocale}`} className="flex flex-col">
-          <span className="text-lg font-semibold">{t("common.brand")}</span>
-          <span className="text-xs text-zinc-500">{t("common.tagline")}</span>
+        <Link href={`/${currentLocale}`} className="flex flex-col group">
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{t("common.brand")}</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("common.tagline")}</span>
         </Link>
         <nav className="flex flex-wrap items-center gap-3 text-sm" aria-label="Primary">
           <NavLink href={`/${currentLocale}`}>{t("nav.news")}</NavLink>

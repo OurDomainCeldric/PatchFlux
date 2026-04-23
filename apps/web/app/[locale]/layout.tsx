@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { locales, type Locale } from "@/i18n/config";
+import { Inter } from "next/font/google";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -81,7 +84,7 @@ export default async function LocaleLayout({
   };
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={`${inter.variable} antialiased`}>
       <head>
         {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
         <script
@@ -90,7 +93,7 @@ export default async function LocaleLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className="bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+      <body className="bg-[#f8fafc] text-slate-900 dark:bg-[#09090b] dark:text-slate-100 font-sans selection:bg-indigo-500/30">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a
             href="#main-content"

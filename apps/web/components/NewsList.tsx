@@ -189,10 +189,10 @@ export function NewsList({ pathname }: NewsListProps) {
       </p>
       {grouped.map(([dateLabel, bucket]) => (
         <section key={dateLabel} className="mb-6">
-          <h2 className="sticky top-0 z-10 -mx-4 mb-2 bg-zinc-50/90 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-600 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-300">
+          <h2 className="sticky top-16 z-10 -mx-4 mb-3 bg-[#f8fafc]/90 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 backdrop-blur-md dark:bg-[#09090b]/90 dark:text-slate-400">
             {dateLabel}
           </h2>
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {bucket.map((item) => {
               const hot = !isCommunity && item.priority >= 2;
               const notable = !isCommunity && item.priority === 1;
@@ -201,10 +201,10 @@ export function NewsList({ pathname }: NewsListProps) {
                 key={item.id}
                 className={
                   hot
-                    ? "rounded-lg border-l-4 border-red-500 border-y border-r border-y-red-200 border-r-red-200 bg-red-50 p-4 shadow-sm transition hover:shadow-md dark:border-y-red-900 dark:border-r-red-900 dark:bg-red-950/30"
+                    ? "group relative rounded-xl border border-red-200/60 bg-gradient-to-br from-red-50/80 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-red-900/50 dark:from-red-950/20 dark:to-[#18181b] overflow-hidden"
                     : notable
-                    ? "rounded-lg border-l-4 border-amber-400 border-y border-r border-y-amber-200 border-r-amber-200 bg-amber-50/50 p-4 shadow-sm transition hover:shadow-md dark:border-y-amber-900 dark:border-r-amber-900 dark:bg-amber-950/20"
-                    : "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                    ? "group relative rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/50 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-amber-900/40 dark:from-amber-950/20 dark:to-[#18181b] overflow-hidden"
+                    : "group relative rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-200 dark:border-slate-800/60 dark:bg-[#18181b] dark:hover:border-indigo-900/50 overflow-hidden"
                 }
               >
                 <div className="flex items-start justify-between gap-4">
@@ -222,7 +222,7 @@ export function NewsList({ pathname }: NewsListProps) {
                       href={item.url}
                       target="_blank"
                       rel="noopener nofollow"
-                      className="hover:underline focus-visible:underline focus-visible:outline-2 focus-visible:outline-blue-500"
+                      className="text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors focus-visible:underline focus-visible:outline-2 focus-visible:outline-indigo-500"
                       aria-label={t("news.openOriginalAria", { source: item.sourceName })}
                     >
                       {item.title}
@@ -231,13 +231,13 @@ export function NewsList({ pathname }: NewsListProps) {
                   <button
                     type="button"
                     onClick={() => applyFilterChange({ source: item.sourceId })}
-                    className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs uppercase text-zinc-600 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="shrink-0 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
                     title={item.sourceId}
                   >
                     {item.sourceName}
                   </button>
                 </div>
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     {t("news.publishedAt", {
                       date: timeFormatter.format(new Date(item.publishedAt)),
@@ -245,7 +245,7 @@ export function NewsList({ pathname }: NewsListProps) {
                     {item.author ? ` · ${item.author}` : ""}
                   </span>
                   <span
-                    className="inline-flex items-center rounded border border-zinc-300 px-1.5 py-0 text-[10px] font-semibold uppercase text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                    className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     title={t("news.contentLanguage")}
                   >
                     {item.language}
@@ -258,7 +258,7 @@ export function NewsList({ pathname }: NewsListProps) {
                         <button
                           type="button"
                           onClick={() => applyFilterChange({ product })}
-                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-blue-500 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                          className="rounded-full bg-slate-100/80 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           {product}
                         </button>
@@ -266,16 +266,21 @@ export function NewsList({ pathname }: NewsListProps) {
                     ))}
                   </ul>
                 )}
-                <div className="mt-3">
+                <div className="mt-4">
                   <a
                     href={item.url}
                     target="_blank"
                     rel="noopener nofollow"
-                    className="text-xs font-medium text-blue-700 hover:underline dark:text-blue-400"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                   >
-                    {t("news.openOriginal")} →
+                    {t("news.openOriginal")}
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
                   </a>
                 </div>
+                {hot && <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />}
+                {notable && <div className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}
               </li>
               );
             })}
