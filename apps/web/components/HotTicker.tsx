@@ -45,7 +45,6 @@ export function HotTicker() {
     return () => media.removeEventListener("change", onChange);
   }, []);
 
-  if (isCommunity) return null;
   if (!items) return <HotTickerSkeleton />;
   if (items.length === 0) return null;
 

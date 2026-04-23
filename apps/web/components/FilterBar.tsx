@@ -152,6 +152,13 @@ export function FilterBar({ pathname }: FilterBarProps) {
 
   const advancedRef = useRef<HTMLDivElement | null>(null);
 
+  const filteredSources = useMemo(() => {
+    return sources.filter((s) => {
+      const isReddit = s.sourceId.startsWith("reddit-");
+      return isCommunity ? isReddit : !isReddit;
+    });
+  }, [sources, isCommunity]);
+
   useEffect(() => {
     setDraftQ(current.q);
   }, [current.q]);
@@ -402,10 +409,10 @@ export function FilterBar({ pathname }: FilterBarProps) {
                     {t("filters.source")}
                   </legend>
                   <div className="flex flex-wrap gap-1.5">
-                    {sources.length === 0 && (
+                    {filteredSources.length === 0 && (
                       <span className="text-xs text-zinc-400">—</span>
                     )}
-                    {sources.map((s) => (
+                    {filteredSources.map((s) => (
                       <TogglePill
                         key={s.sourceId}
                         active={current.source === s.sourceId}
