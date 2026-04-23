@@ -8,13 +8,15 @@ export type FeedTab = "news" | "community";
 
 interface FeedTabsProps {
   pathname: string;
-  activeTab: FeedTab;
 }
 
-export function FeedTabs({ pathname, activeTab }: FeedTabsProps) {
+export function FeedTabs({ pathname }: FeedTabsProps) {
   const t = useTranslations("tabs");
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const rawTab = searchParams?.get("tab");
+  const activeTab: FeedTab = rawTab === "community" ? "community" : "news";
 
   const switchTab = useCallback(
     (tab: FeedTab) => {

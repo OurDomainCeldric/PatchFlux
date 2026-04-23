@@ -67,8 +67,6 @@ def test_source_tiers_valid():
 
 def test_community_adapters_declare_keyword_filter():
     """Tier-3 adapters for general communities must filter by title keywords."""
-    from sources._rss import MICROSOFT_TITLE_KEYWORDS
-
     community = [RedditSysadminAdapter]
     for cls in community:
         kws = getattr(cls, "title_keywords", None)

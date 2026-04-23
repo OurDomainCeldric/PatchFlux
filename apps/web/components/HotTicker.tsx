@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { fetchHot, type NewsItem } from "@/lib/api";
 import { HotTickerSkeleton } from "@/components/Skeleton";
 
@@ -18,6 +19,8 @@ export function HotTicker() {
   const locale = useLocale();
   const [items, setItems] = useState<NewsItem[] | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const searchParams = useSearchParams();
+  const isCommunity = searchParams?.get("tab") === "community";
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +45,7 @@ export function HotTicker() {
     return () => media.removeEventListener("change", onChange);
   }, []);
 
+  if (isCommunity) return null;
   if (!items) return <HotTickerSkeleton />;
   if (items.length === 0) return null;
 

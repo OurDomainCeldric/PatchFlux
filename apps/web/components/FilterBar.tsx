@@ -104,7 +104,6 @@ function advancedActiveCount(state: FilterState): number {
 
 interface FilterBarProps {
   pathname: string;
-  community?: boolean;
 }
 
 /** Pill-style toggle button with aria-pressed. */
@@ -133,10 +132,12 @@ function TogglePill({
   );
 }
 
-export function FilterBar({ pathname, community = false }: FilterBarProps) {
+export function FilterBar({ pathname }: FilterBarProps) {
   const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const isCommunity = searchParams?.get("tab") === "community";
 
   const current = useMemo(
     () => readFiltersFromParams(searchParams ?? new URLSearchParams()),
@@ -319,7 +320,7 @@ export function FilterBar({ pathname, community = false }: FilterBarProps) {
           />
         </label>
 
-        {!community && (
+        {!isCommunity && (
           <button
             type="button"
             aria-pressed={current.onlyHot}
