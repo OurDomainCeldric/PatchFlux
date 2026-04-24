@@ -31,6 +31,14 @@ export async function SiteFooter() {
           >
             {t("footer.rss")}
           </a>
+          <a
+            href="https://github.com/OurDomainCeldric/PatchFlux/issues/new?template=source_request.md"
+            className="hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("footer.suggestSource")}
+          </a>
         </nav>
       </div>
     </footer>

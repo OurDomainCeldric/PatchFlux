@@ -81,7 +81,8 @@
     "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
     "imprint": "Imprint",
     "privacy": "Privacy",
-    "rss": "RSS"
+    "rss": "RSS",
+    "suggestSource": "Suggest source"
   },
   "imprint": {
     "title": "Imprint",

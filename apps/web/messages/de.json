@@ -81,7 +81,8 @@
     "legalNotice": "Es werden ausschließlich Metadaten (Überschrift, Datum, Quelle, Link) gespeichert. Jede Meldung verlinkt auf den Originalartikel beim jeweiligen Verlag.",
     "imprint": "Impressum",
     "privacy": "Datenschutz",
-    "rss": "RSS"
+    "rss": "RSS",
+    "suggestSource": "Quelle vorschlagen"
   },
   "imprint": {
     "title": "Impressum",

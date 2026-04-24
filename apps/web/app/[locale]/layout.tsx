@@ -41,6 +41,7 @@ export async function generateMetadata(props: {
       title: t("brand"),
       description: t("tagline"),
     },
+    manifest: "/manifest.json",
   };
 }
 
@@ -91,6 +92,22 @@ export default async function LocaleLayout({
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
         />
       </head>
       <body className="bg-[#f8fafc] text-slate-900 dark:bg-[#09090b] dark:text-slate-100 font-sans selection:bg-indigo-500/30">

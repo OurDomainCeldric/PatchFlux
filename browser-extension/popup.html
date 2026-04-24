@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>PatchFlux</title>
+  <style>
+    body { width: 320px; font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #fff; color: #18181b; }
+    h1 { font-size: 16px; margin: 0 0 12px 0; display: flex; align-items: center; justify-content: space-between; }
+    .brand { font-weight: bold; color: #2563eb; text-decoration: none; }
+    .news-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .news-item { font-size: 13px; line-height: 1.4; }
+    .news-item a { color: #18181b; text-decoration: none; }
+    .news-item a:hover { text-decoration: underline; color: #2563eb; }
+    .meta { font-size: 11px; color: #71717a; margin-top: 2px; }
+    .loading { font-size: 12px; color: #71717a; text-align: center; padding: 20px; }
+    .hot-badge { background: #ef4444; color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px; font-weight: bold; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <h1>
+    <a href="https://patchflux.de" target="_blank" class="brand">PatchFlux</a>
+    <span style="font-size: 12px; font-weight: normal; color: #71717a;">Top News</span>
+  </h1>
+  <div id="content">
+    <div class="loading">Lade Meldungen...</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

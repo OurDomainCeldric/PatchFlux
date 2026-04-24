@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "PatchFlux Top News",
+  "version": "1.0",
+  "description": "Zeigt die neuesten Hot News und Sicherheitslücken von PatchFlux an.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PatchFlux"
+  },
+  "host_permissions": [
+    "https://func-omlorsnews-prod.azurewebsites.net/api/*"
+  ]
+}
