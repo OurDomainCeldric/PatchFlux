@@ -46,7 +46,7 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
   return (
     <nav
       aria-label={t("ariaLabel")}
-      className="mb-6 flex w-fit gap-1 rounded-full border border-slate-200/60 bg-slate-100/50 p-1 shadow-sm dark:border-slate-800/60 dark:bg-[#18181b]/50"
+      className="mb-4 sm:mb-6 flex w-fit gap-1 rounded-full border border-slate-200/60 bg-slate-100/50 p-1 shadow-sm dark:border-slate-800/60 dark:bg-[#18181b]/50"
     >
       {tabs.map(({ key, label }) => {
         const isActive = activeTab === key;
@@ -58,7 +58,7 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
             aria-selected={isActive}
             onClick={() => switchTab(key)}
             className={
-              "relative rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 focus-visible:outline-2 focus-visible:outline-indigo-500 " +
+              "relative rounded-full px-4 py-1.5 sm:px-5 sm:py-2 text-sm font-semibold transition-all duration-300 focus-visible:outline-2 focus-visible:outline-indigo-500 " +
               (isActive
                 ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800 dark:text-indigo-400 dark:ring-slate-700/50"
                 : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100")

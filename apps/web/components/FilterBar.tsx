@@ -270,7 +270,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
   return (
     <section
       aria-label={t("filters.heading")}
-      className="mb-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      className="mb-4 sm:mb-6 rounded-lg border border-zinc-200 bg-white p-3 sm:p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
       {/* Topic chips --------------------------------------------------- */}
       <div className="mb-3">
@@ -335,7 +335,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
 
       {/* Search + quick switches + advanced toggle -------------------- */}
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm focus-within:outline-2 focus-within:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-950">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded border border-zinc-300 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-sm focus-within:outline-2 focus-within:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-950">
           <span aria-hidden className="text-zinc-400">
             ⌕
           </span>

@@ -122,7 +122,7 @@ export default async function LocaleLayout({
             <SiteHeader />
             <main
               id="main-content"
-              className="mx-auto w-full max-w-5xl flex-1 px-4 py-8"
+              className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 sm:py-8"
             >
               {children}
             </main>

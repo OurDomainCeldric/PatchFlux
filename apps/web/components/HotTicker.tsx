@@ -55,7 +55,7 @@ export function HotTicker() {
   return (
     <section
       aria-label={t("news.hotTicker")}
-      className="mb-6 overflow-hidden rounded-lg border border-red-300 bg-gradient-to-r from-red-50 to-red-100/40 dark:border-red-900/60 dark:from-red-950/40 dark:to-red-900/10"
+      className="mb-4 sm:mb-6 overflow-hidden rounded-lg border border-red-300 bg-gradient-to-r from-red-50 to-red-100/40 dark:border-red-900/60 dark:from-red-950/40 dark:to-red-900/10"
     >
       <div className="flex items-stretch">
         <div className="flex shrink-0 items-center gap-2 border-r border-red-300/70 bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white dark:border-red-900/70">
