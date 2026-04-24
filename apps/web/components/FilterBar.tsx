@@ -149,6 +149,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
   const [products, setProducts] = useState<ProductCount[]>([]);
   const [topicCounts, setTopicCounts] = useState<Record<string, number>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [topicsOpen, setTopicsOpen] = useState(false);
 
   const advancedRef = useRef<HTMLDivElement | null>(null);
 
@@ -268,43 +269,62 @@ export function FilterBar({ pathname }: FilterBarProps) {
       {/* Topic chips --------------------------------------------------- */}
       <div className="mb-3">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
-            {t("filters.topics")}
-          </h2>
           <button
             type="button"
-            onClick={setAllTopics}
-            disabled={allTopicsOn}
-            className="text-xs text-blue-700 hover:underline disabled:text-zinc-400 disabled:no-underline dark:text-blue-400"
+            onClick={() => setTopicsOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-300 dark:hover:text-zinc-100 transition-colors"
+            aria-expanded={topicsOpen}
+            aria-controls="topics-panel"
           >
-            {t("filters.allTopics")}
+            <svg
+              className={`h-3.5 w-3.5 transition-transform ${topicsOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            {t("filters.topics")}
           </button>
+          {topicsOpen && (
+            <button
+              type="button"
+              onClick={setAllTopics}
+              disabled={allTopicsOn}
+              className="text-xs text-blue-700 hover:underline disabled:text-zinc-400 disabled:no-underline dark:text-blue-400"
+            >
+              {t("filters.allTopics")}
+            </button>
+          )}
         </div>
-        <ul role="group" aria-label={t("filters.topics")} className="flex flex-wrap gap-2">
-          {TOPICS.map((topic) => {
-            const active = current.topics.has(topic);
-            const count = topicCounts[topic];
-            return (
-              <li key={topic}>
-                <TogglePill active={active} onClick={() => toggleTopic(topic)}>
-                  {t(`topics.${topic}`)}
-                  {typeof count === "number" && count > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className={
-                        active
-                          ? "ml-1.5 rounded bg-white/20 px-1 text-[10px] font-semibold"
-                          : "ml-1.5 rounded bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      }
-                    >
-                      {count}
-                    </span>
-                  )}
-                </TogglePill>
-              </li>
-            );
-          })}
-        </ul>
+        {topicsOpen && (
+          <ul id="topics-panel" role="group" aria-label={t("filters.topics")} className="flex flex-wrap gap-2 mt-3">
+            {TOPICS.map((topic) => {
+              const active = current.topics.has(topic);
+              const count = topicCounts[topic];
+              return (
+                <li key={topic}>
+                  <TogglePill active={active} onClick={() => toggleTopic(topic)}>
+                    {t(`topics.${topic}`)}
+                    {typeof count === "number" && count > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className={
+                          active
+                            ? "ml-1.5 rounded bg-white/20 px-1 text-[10px] font-semibold"
+                            : "ml-1.5 rounded bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                        }
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </TogglePill>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       {/* Search + quick switches + advanced toggle -------------------- */}

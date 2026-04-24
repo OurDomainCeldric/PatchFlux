@@ -11,6 +11,12 @@ export async function SiteFooter() {
         <p>{t("footer.disclaimer")}</p>
         <p>{t("footer.legalNotice")}</p>
         <nav className="flex flex-wrap gap-4" aria-label="Legal">
+          <Link href={`/${locale}`} className="hover:underline">
+            {t("nav.news")}
+          </Link>
+          <Link href={`/${locale}/sources`} className="hover:underline">
+            {t("nav.sources")}
+          </Link>
           <Link href={`/${locale}/imprint`} className="hover:underline">
             {t("footer.imprint")}
           </Link>
