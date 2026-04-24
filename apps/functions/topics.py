@@ -131,6 +131,8 @@ _SOURCE_TOPICS: dict[str, tuple[Topic, ...]] = {
     "cisa-kev": ("cve",),
     "ms-security-blog": ("security",),
     "github-blog": ("new-features", "changes"),
+    "reddit-sysadmin": ("community",),
+    "reddit-microsoft": ("community",),
 }
 
 ALL_TOPICS: tuple[Topic, ...] = (
@@ -140,6 +142,7 @@ ALL_TOPICS: tuple[Topic, ...] = (
     "security",
     "compliance",
     "outage",
+    "community",
 )
 
 

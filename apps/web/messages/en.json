@@ -141,7 +141,8 @@
     "cve": "CVEs",
     "security": "Security",
     "compliance": "EU / Compliance",
-    "outage": "Outages"
+    "outage": "Outages",
+    "community": "Discussion"
   },
   "errors": {
     "sectionCrashTitle": "Something went wrong loading this section.",

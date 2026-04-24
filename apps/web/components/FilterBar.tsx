@@ -13,6 +13,7 @@ export const TOPICS = [
   "security",
   "compliance",
   "outage",
+  "community",
 ] as const;
 export type Topic = (typeof TOPICS)[number];
 

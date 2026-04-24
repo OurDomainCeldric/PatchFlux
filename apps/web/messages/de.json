@@ -141,7 +141,8 @@
     "cve": "CVEs",
     "security": "Security",
     "compliance": "EU / Compliance",
-    "outage": "Störungen"
+    "outage": "Störungen",
+    "community": "Diskussion"
   },
   "errors": {
     "sectionCrashTitle": "Beim Laden dieses Bereichs ist ein Fehler aufgetreten.",
