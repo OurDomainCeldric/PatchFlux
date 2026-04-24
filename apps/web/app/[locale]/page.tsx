@@ -3,7 +3,6 @@ import { setRequestLocale } from "next-intl/server";
 import { FeedTabs } from "@/components/FeedTabs";
 import { FilterBar } from "@/components/FilterBar";
 import { HotTicker } from "@/components/HotTicker";
-import { NewsletterSubscribe } from "@/components/NewsletterSubscribe";
 import { NewsList } from "@/components/NewsList";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -27,9 +26,6 @@ export default async function HomePage({
       </ErrorBoundary>
       <ErrorBoundary>
         <FilterBar pathname={pathname} />
-      </ErrorBoundary>
-      <ErrorBoundary>
-        <NewsletterSubscribe />
       </ErrorBoundary>
       <ErrorBoundary>
         <NewsList pathname={pathname} />
