@@ -211,8 +211,13 @@ export function FilterBar({ pathname }: FilterBarProps) {
   }, [advancedOpen]);
 
   const navigate = (next: FilterState) => {
-    const qs = filtersToQuery(next).toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const qs = filtersToQuery(next);
+    const tab = searchParams?.get("tab");
+    if (tab) {
+      qs.set("tab", tab);
+    }
+    const qsString = qs.toString();
+    router.replace(qsString ? `${pathname}?${qsString}` : pathname, { scroll: false });
   };
 
   const toggleTopic = (topic: Topic) => {
