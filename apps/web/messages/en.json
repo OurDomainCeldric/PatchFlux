@@ -145,6 +145,13 @@
     "outage": "Outages",
     "community": "Discussion"
   },
+  "newsletter": {
+    "heading": "PatchFlux via Email",
+    "description": "Get a daily automated digest of all new hot news from our RSS feed straight to your inbox.",
+    "placeholder": "Your email address",
+    "button": "Subscribe",
+    "disclaimer": "Powered by Buttondown. You can unsubscribe at any time with a single click."
+  },
   "errors": {
     "sectionCrashTitle": "Something went wrong loading this section.",
     "sectionCrashBody": "The rest of the page still works. Try reloading this section.",

@@ -145,6 +145,13 @@
     "outage": "Störungen",
     "community": "Diskussion"
   },
+  "newsletter": {
+    "heading": "PatchFlux per E-Mail",
+    "description": "Erhalte einmal täglich automatisch alle neuen Top-News aus dem RSS-Feed in dein Postfach.",
+    "placeholder": "Deine E-Mail-Adresse",
+    "button": "Abonnieren",
+    "disclaimer": "Der Versand erfolgt über Buttondown. Du kannst dich jederzeit mit einem Klick abmelden."
+  },
   "errors": {
     "sectionCrashTitle": "Beim Laden dieses Bereichs ist ein Fehler aufgetreten.",
     "sectionCrashBody": "Der Rest der Seite funktioniert weiter. Bitte versuchen Sie, diesen Bereich neu zu laden.",
