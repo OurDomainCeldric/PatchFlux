@@ -100,6 +100,7 @@ function advancedActiveCount(state: FilterState): number {
   if (state.lang) n += 1;
   if (state.since) n += 1;
   if (state.deduped) n += 1;
+  if (!isDefaultTopicSet(state.topics)) n += 1;
   return n;
 }
 
@@ -150,7 +151,6 @@ export function FilterBar({ pathname }: FilterBarProps) {
   const [products, setProducts] = useState<ProductCount[]>([]);
   const [topicCounts, setTopicCounts] = useState<Record<string, number>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [topicsOpen, setTopicsOpen] = useState(false);
 
   const advancedRef = useRef<HTMLDivElement | null>(null);
 
@@ -272,68 +272,6 @@ export function FilterBar({ pathname }: FilterBarProps) {
       aria-label={t("filters.heading")}
       className="mb-4 sm:mb-6 rounded-lg border border-zinc-200 bg-white p-3 sm:p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
-      {/* Topic chips --------------------------------------------------- */}
-      <div className="mb-3">
-        <div className="mb-2 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setTopicsOpen((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-300 dark:hover:text-zinc-100 transition-colors"
-            aria-expanded={topicsOpen}
-            aria-controls="topics-panel"
-          >
-            <svg
-              className={`h-3.5 w-3.5 transition-transform ${topicsOpen ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-            {t("filters.topics")}
-          </button>
-          {topicsOpen && (
-            <button
-              type="button"
-              onClick={setAllTopics}
-              disabled={allTopicsOn}
-              className="text-xs text-blue-700 hover:underline disabled:text-zinc-400 disabled:no-underline dark:text-blue-400"
-            >
-              {t("filters.allTopics")}
-            </button>
-          )}
-        </div>
-        {topicsOpen && (
-          <ul id="topics-panel" role="group" aria-label={t("filters.topics")} className="flex flex-wrap gap-2 mt-3">
-            {TOPICS.map((topic) => {
-              const active = current.topics.has(topic);
-              const count = topicCounts[topic];
-              return (
-                <li key={topic}>
-                  <TogglePill active={active} onClick={() => toggleTopic(topic)}>
-                    {t(`topics.${topic}`)}
-                    {typeof count === "number" && count > 0 && (
-                      <span
-                        aria-hidden="true"
-                        className={
-                          active
-                            ? "ml-1.5 rounded bg-white/20 px-1 text-[10px] font-semibold"
-                            : "ml-1.5 rounded bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                        }
-                      >
-                        {count}
-                      </span>
-                    )}
-                  </TogglePill>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Search + quick switches + advanced toggle -------------------- */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded border border-zinc-300 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-sm focus-within:outline-2 focus-within:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-950">
           <span aria-hidden className="text-zinc-400">
@@ -430,6 +368,45 @@ export function FilterBar({ pathname }: FilterBarProps) {
               </div>
 
               <div className="space-y-3">
+                <fieldset>
+                  <div className="flex items-center justify-between mb-1">
+                    <legend className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      {t("filters.topics")}
+                    </legend>
+                    <button
+                      type="button"
+                      onClick={setAllTopics}
+                      disabled={allTopicsOn}
+                      className="text-[10px] text-blue-700 hover:underline disabled:text-zinc-400 disabled:no-underline dark:text-blue-400"
+                    >
+                      {t("filters.allTopics")}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TOPICS.map((topic) => {
+                      const active = current.topics.has(topic);
+                      const count = topicCounts[topic];
+                      return (
+                        <TogglePill key={topic} active={active} onClick={() => toggleTopic(topic)}>
+                          {t(`topics.${topic}`)}
+                          {typeof count === "number" && count > 0 && (
+                            <span
+                              aria-hidden="true"
+                              className={
+                                active
+                                  ? "ml-1.5 rounded bg-white/20 px-1 text-[10px] font-semibold"
+                                  : "ml-1.5 rounded bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                              }
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </TogglePill>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
                 <fieldset>
                   <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                     {t("filters.source")}
