@@ -26,6 +26,7 @@ import logging
 import re
 import time
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from xml.sax.saxutils import escape as xml_escape
 
@@ -85,6 +86,7 @@ DISABLED_SOURCE_IDS = {"reddit-sysadmin", "reddit-microsoft"}
 # If a source has not been fetched successfully within this window, /health
 # reports it as stale.
 STALE_WINDOW = timedelta(hours=26)
+HEALTHY_SOURCE_STATUSES = {"ok", "not_modified"}
 
 # Adapter error messages often embed absolute file paths, IP addresses,
 # Python-package internals and line numbers; none of that is useful to the
@@ -133,7 +135,7 @@ except Exception:  # noqa: BLE001 — logged by Application Insights via logger
     log.exception("Failed to ensure tables during cold start")
 
 
-def _all_adapters() -> list[SourceAdapter]:
+def _configured_adapters() -> list[SourceAdapter]:
     adapters = [
         M365RoadmapAdapter(),
         AzureUpdatesAdapter(),
@@ -152,12 +154,103 @@ def _all_adapters() -> list[SourceAdapter]:
         RedditSysadminAdapter(),
         RedditMicrosoftAdapter(),
     ]
+    return adapters
+
+
+def _all_adapters() -> list[SourceAdapter]:
+    adapters = _configured_adapters()
     return [adapter for adapter in adapters if _is_enabled_source_id(adapter.source_id)]
 
 
 def _adapters_matching(ids: Iterable[str]) -> list[SourceAdapter]:
     wanted = set(ids)
     return [a for a in _all_adapters() if a.source_id in wanted]
+
+
+@dataclass(frozen=True)
+class SourceHealthView:
+    source_id: str
+    source_name: str
+    state: str
+    last_status: str | None
+    last_error: str | None
+    last_attempt_at: str | None
+    last_fetch_at: str | None
+    last_success_at: str | None
+    items_last_run: int
+
+
+def _as_utc_datetime(value: object) -> datetime | None:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _classify_source_state(
+    *,
+    source_id: str,
+    last_status: str | None,
+    last_attempt_at: datetime | None,
+    last_success_at: datetime | None,
+    now: datetime,
+) -> str:
+    if not _is_enabled_source_id(source_id):
+        return "disabled"
+    if last_attempt_at is None and last_success_at is None:
+        return "never"
+    if last_attempt_at is None or (now - last_attempt_at) > STALE_WINDOW:
+        return "timer_not_firing"
+    if last_status == "error":
+        return "error"
+    if last_success_at is None or (now - last_success_at) > STALE_WINDOW:
+        return "stale"
+    if last_status == "not_modified":
+        return "not_modified"
+    return "ok"
+
+
+def _source_catalog() -> dict[str, str]:
+    return {adapter.source_id: adapter.source_name for adapter in _configured_adapters()}
+
+
+def _list_source_health_views() -> list[SourceHealthView]:
+    now = datetime.now(UTC)
+    store = _store()
+    catalog = _source_catalog()
+    rows_by_id = {
+        str(ent.get("RowKey") or ""): ent for ent in store.list_source_health() if ent.get("RowKey")
+    }
+    source_ids = sorted(set(catalog) | set(DISABLED_SOURCE_IDS) | set(rows_by_id))
+    views: list[SourceHealthView] = []
+    for source_id in source_ids:
+        ent = rows_by_id.get(source_id, {})
+        last_status = str(ent.get("LastStatus") or "") or None
+        last_attempt_at = _as_utc_datetime(ent.get("LastAttemptAt"))
+        last_fetch_at = _as_utc_datetime(ent.get("LastFetchAt"))
+        last_success_at = _as_utc_datetime(ent.get("LastSuccessAt")) or last_fetch_at
+        state = _classify_source_state(
+            source_id=source_id,
+            last_status=last_status,
+            last_attempt_at=last_attempt_at,
+            last_success_at=last_success_at,
+            now=now,
+        )
+        views.append(
+            SourceHealthView(
+                source_id=source_id,
+                source_name=catalog.get(source_id, source_id),
+                state=state,
+                last_status=last_status,
+                last_error=_safe_error_summary(ent.get("LastError") or None),
+                last_attempt_at=last_attempt_at.isoformat() if last_attempt_at else None,
+                last_fetch_at=last_fetch_at.isoformat() if last_fetch_at else None,
+                last_success_at=last_success_at.isoformat() if last_success_at else None,
+                items_last_run=int(ent.get("ItemsLastRun") or 0),
+            )
+        )
+    return views
 
 
 def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
@@ -498,27 +591,21 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="sources", methods=["GET"])
 def api_sources(req: func.HttpRequest) -> func.HttpResponse:
     include_counts = _parse_bool(req.params.get("include_counts"))
-    store = _store()
     sources = []
-    for ent in store.list_source_health():
-        source_id = str(ent.get("RowKey") or "")
-        if not _is_enabled_source_id(source_id):
-            continue
-        last_fetch = ent.get("LastFetchAt")
-        if isinstance(last_fetch, datetime):
-            last_fetch = last_fetch.isoformat()
+    for view in _list_source_health_views():
         record = {
-            "sourceId": source_id,
-            "lastFetchAt": last_fetch,
-            "lastStatus": ent.get("LastStatus"),
-            # Defence in depth: any legacy rows (pre-sanitizer) are also
-            # scrubbed here before reaching the client.
-            "lastError": _safe_error_summary(ent.get("LastError") or None),
+            "sourceId": view.source_id,
+            "sourceName": view.source_name,
+            "state": view.state,
+            "lastAttemptAt": view.last_attempt_at,
+            "lastFetchAt": view.last_fetch_at,
+            "lastSuccessAt": view.last_success_at,
+            "lastStatus": view.last_status,
+            "lastError": view.last_error,
         }
         if include_counts:
-            record["itemsLastRun"] = int(ent.get("ItemsLastRun") or 0)
+            record["itemsLastRun"] = view.items_last_run
         sources.append(record)
-    sources.sort(key=lambda r: r["sourceId"] or "")
     return _json_response({"sources": sources}, cache_seconds=60)
 
 
@@ -587,31 +674,49 @@ def api_hot(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="api_health")
 @app.route(route="health", methods=["GET"])
 def api_health(req: func.HttpRequest) -> func.HttpResponse:
-    store = _store()
-    stale: list[str] = []
     storage_ok = True
     now = datetime.now(UTC)
+    source_lists = {
+        "disabled": [],
+        "error": [],
+        "never": [],
+        "notModified": [],
+        "ok": [],
+        "stale": [],
+        "timerNotFiring": [],
+    }
     try:
-        for ent in store.list_source_health():
-            source_id = str(ent.get("RowKey") or "")
-            if not _is_enabled_source_id(source_id):
-                continue
-            last_fetch = ent.get("LastFetchAt")
-            status = ent.get("LastStatus") or ""
-            if (
-                not isinstance(last_fetch, datetime)
-                or (now - last_fetch.astimezone(UTC)) > STALE_WINDOW
-                or status == "error"
-            ):
-                stale.append(source_id)
+        for view in _list_source_health_views():
+            match view.state:
+                case "disabled":
+                    source_lists["disabled"].append(view.source_id)
+                case "error":
+                    source_lists["error"].append(view.source_id)
+                case "never":
+                    source_lists["never"].append(view.source_id)
+                case "not_modified":
+                    source_lists["notModified"].append(view.source_id)
+                case "stale":
+                    source_lists["stale"].append(view.source_id)
+                case "timer_not_firing":
+                    source_lists["timerNotFiring"].append(view.source_id)
+                case _:
+                    source_lists["ok"].append(view.source_id)
     except Exception:  # noqa: BLE001
         storage_ok = False
         log.exception("health check failed to enumerate SourceHealth")
 
+    degraded_sources = sorted(
+        source_lists["error"] + source_lists["never"] + source_lists["stale"] + source_lists["timerNotFiring"]
+    )
+    overall_ok = storage_ok and not degraded_sources
+
     body = {
-        "status": "ok" if storage_ok else "degraded",
+        "status": "ok" if overall_ok else "degraded",
         "storage": storage_ok,
-        "sourcesStale": sorted(stale),
+        "sourcesStale": degraded_sources,
+        "sourceCounts": {key: len(value) for key, value in source_lists.items()},
+        "sourcesByState": source_lists,
         "checkedAt": now.isoformat(),
     }
     status_code = 200 if storage_ok else 503

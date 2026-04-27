@@ -13,6 +13,23 @@ import {
 
 const STORAGE_KEY = "patchflux:functionKey";
 
+function sourceStateBadgeClass(state: SourceHealth["state"]) {
+  switch (state) {
+    case "ok":
+      return "inline-flex rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+    case "not_modified":
+      return "inline-flex rounded bg-sky-100 px-2 py-0.5 text-xs text-sky-800 dark:bg-sky-900/40 dark:text-sky-200";
+    case "disabled":
+      return "inline-flex rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+    case "never":
+    case "stale":
+    case "timer_not_firing":
+      return "inline-flex rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200";
+    case "error":
+      return "inline-flex rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/40 dark:text-red-200";
+  }
+}
+
 export function AdminConsole() {
   const t = useTranslations();
   const locale = useLocale();
@@ -38,7 +55,7 @@ export function AdminConsole() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([fetchHealth(), fetchSources()])
+    void Promise.all([fetchHealth(), fetchSources(true)])
       .then(([h, s]) => {
         if (cancelled) return;
         setHealth(h);
@@ -86,7 +103,7 @@ export function AdminConsole() {
     try {
       const result = await triggerIngest(savedKey, sourceId);
       setLastResult(result);
-      const [h, s] = await Promise.all([fetchHealth(), fetchSources()]);
+      const [h, s] = await Promise.all([fetchHealth(), fetchSources(true)]);
       setHealth(h);
       setSources(s.sources);
     } catch (err: unknown) {
@@ -151,6 +168,16 @@ export function AdminConsole() {
                 ? t("admin.none")
                 : health.sourcesStale.join(", ")}
             </dd>
+            <dt className="text-zinc-500">{t("admin.statusBreakdown")}</dt>
+            <dd className="flex flex-wrap gap-2 text-xs">
+              <span>{t("sources.states.ok")}: {health.sourceCounts.ok}</span>
+              <span>{t("sources.states.not_modified")}: {health.sourceCounts.notModified}</span>
+              <span>{t("sources.states.error")}: {health.sourceCounts.error}</span>
+              <span>{t("sources.states.stale")}: {health.sourceCounts.stale}</span>
+              <span>{t("sources.states.timer_not_firing")}: {health.sourceCounts.timerNotFiring}</span>
+              <span>{t("sources.states.disabled")}: {health.sourceCounts.disabled}</span>
+              <span>{t("sources.states.never")}: {health.sourceCounts.never}</span>
+            </dd>
           </dl>
         ) : (
           <p className="text-sm text-zinc-500">{t("news.loading")}</p>
@@ -178,8 +205,11 @@ export function AdminConsole() {
               <thead>
                 <tr className="text-left text-xs uppercase text-zinc-500">
                   <th className="py-2 pr-4">ID</th>
+                  <th className="py-2 pr-4">{t("sources.state")}</th>
                   <th className="py-2 pr-4">{t("sources.status")}</th>
                   <th className="py-2 pr-4">{t("sources.itemsLastRun")}</th>
+                  <th className="py-2 pr-4">{t("sources.lastAttempt")}</th>
+                  <th className="py-2 pr-4">{t("sources.lastSuccess")}</th>
                   <th className="py-2 pr-4">{t("sources.lastFetch")}</th>
                   <th className="py-2 pr-4">{t("sources.error")}</th>
                   <th className="py-2"></th>
@@ -192,9 +222,24 @@ export function AdminConsole() {
                     className="border-t border-zinc-200 dark:border-zinc-800"
                   >
                     <td className="py-2 pr-4 font-mono text-xs">{s.sourceId}</td>
+                    <td className="py-2 pr-4">
+                      <span className={sourceStateBadgeClass(s.state)}>
+                        {t(`sources.states.${s.state}`)}
+                      </span>
+                    </td>
                     <td className="py-2 pr-4 text-xs">{s.lastStatus ?? "—"}</td>
                     <td className="py-2 pr-4 tabular-nums text-xs">
                       {s.itemsLastRun ?? "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-zinc-500">
+                      {s.lastAttemptAt
+                        ? dateFormatter.format(new Date(s.lastAttemptAt))
+                        : t("sources.never")}
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-zinc-500">
+                      {s.lastSuccessAt
+                        ? dateFormatter.format(new Date(s.lastSuccessAt))
+                        : t("sources.never")}
                     </td>
                     <td className="py-2 pr-4 text-xs text-zinc-500">
                       {s.lastFetchAt
@@ -211,7 +256,7 @@ export function AdminConsole() {
                       <button
                         type="button"
                         onClick={() => runIngest(s.sourceId)}
-                        disabled={busy !== null || !savedKey}
+                        disabled={busy !== null || !savedKey || s.state === "disabled"}
                         className="rounded border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
                       >
                         {busy === s.sourceId

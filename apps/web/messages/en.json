@@ -71,11 +71,23 @@
   "sources": {
     "heading": "Sources & status",
     "description": "Feed fetch status. All sources are consumed exclusively via official APIs and RSS/Atom feeds.",
-    "lastFetch": "Last fetch",
+    "state": "Operational state",
+    "lastFetch": "Last successful fetch",
+    "lastAttempt": "Last attempt",
+    "lastSuccess": "Last success",
     "status": "Status",
     "error": "Error",
     "never": "never",
-    "itemsLastRun": "Items (last run)"
+    "itemsLastRun": "Items (last run)",
+    "states": {
+      "ok": "OK",
+      "not_modified": "Not modified",
+      "error": "Error",
+      "stale": "Stale",
+      "timer_not_firing": "Timer not firing",
+      "disabled": "Disabled",
+      "never": "Never run"
+    }
   },
   "footer": {
     "disclaimer": "PatchFlux is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
@@ -183,6 +195,7 @@
     "healthOk": "OK",
     "healthDegraded": "Degraded",
     "staleSources": "Stale sources",
+    "statusBreakdown": "Status breakdown",
     "none": "none",
     "ingestError": "Ingest request failed."
   }

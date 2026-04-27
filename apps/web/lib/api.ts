@@ -27,7 +27,18 @@ export interface HotResponse {
 
 export interface SourceHealth {
   sourceId: string;
+  sourceName?: string;
+  state:
+    | "ok"
+    | "not_modified"
+    | "error"
+    | "stale"
+    | "timer_not_firing"
+    | "disabled"
+    | "never";
+  lastAttemptAt: string | null;
   lastFetchAt: string | null;
+  lastSuccessAt: string | null;
   lastStatus: string | null;
   lastError: string | null;
   itemsLastRun?: number;
@@ -60,6 +71,24 @@ export interface HealthResponse {
   status: "ok" | "degraded";
   storage: boolean;
   sourcesStale: string[];
+  sourceCounts: {
+    disabled: number;
+    error: number;
+    never: number;
+    notModified: number;
+    ok: number;
+    stale: number;
+    timerNotFiring: number;
+  };
+  sourcesByState: {
+    disabled: string[];
+    error: string[];
+    never: string[];
+    notModified: string[];
+    ok: string[];
+    stale: string[];
+    timerNotFiring: string[];
+  };
   checkedAt: string;
 }
 

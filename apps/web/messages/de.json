@@ -71,11 +71,23 @@
   "sources": {
     "heading": "Quellen & Status",
     "description": "Status der Feed-Abrufe. Alle Quellen werden ausschließlich über offizielle APIs und RSS-/Atom-Feeds abgerufen.",
-    "lastFetch": "Letzter Abruf",
+    "state": "Betriebszustand",
+    "lastFetch": "Letzter erfolgreicher Abruf",
+    "lastAttempt": "Letzter Versuch",
+    "lastSuccess": "Letzter Erfolg",
     "status": "Status",
     "error": "Fehler",
     "never": "noch nie",
-    "itemsLastRun": "Einträge (letzter Lauf)"
+    "itemsLastRun": "Einträge (letzter Lauf)",
+    "states": {
+      "ok": "OK",
+      "not_modified": "Unverändert",
+      "error": "Fehler",
+      "stale": "Veraltet",
+      "timer_not_firing": "Timer läuft nicht",
+      "disabled": "Deaktiviert",
+      "never": "Nie gelaufen"
+    }
   },
   "footer": {
     "disclaimer": "PatchFlux ist ein unabhängiges Drittanbieter-Tool. Nicht verbunden mit, unterstützt von oder in irgendeiner Weise offiziell verknüpft mit Microsoft, Heise, Borns IT-Blog oder anderen genannten Verlagen. Alle Markenzeichen gehören ihren jeweiligen Inhabern.",
@@ -183,6 +195,7 @@
     "healthOk": "OK",
     "healthDegraded": "Eingeschränkt",
     "staleSources": "Veraltete Quellen",
+    "statusBreakdown": "Statusverteilung",
     "none": "keine",
     "ingestError": "Ingest-Aufruf fehlgeschlagen."
   }

@@ -348,15 +348,20 @@ class NewsStore:
         last_modified: str | None = None,
         items_last_run: int | None = None,
     ) -> None:
+        now = datetime.now(UTC)
         entity: dict[str, object] = {
             "PartitionKey": "sources",
             "RowKey": source_id,
-            "LastFetchAt": datetime.now(UTC),
+            "LastAttemptAt": now,
             "LastStatus": status,
             "LastError": (error or "")[:500],
             "ETag": etag or "",
             "LastModified": last_modified or "",
         }
+        if status != "error":
+            entity["LastFetchAt"] = now
+        if status in {"ok", "not_modified"}:
+            entity["LastSuccessAt"] = now
         if items_last_run is not None:
             entity["ItemsLastRun"] = int(items_last_run)
         with self._health_client() as client:
