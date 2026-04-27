@@ -51,10 +51,11 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
 
   const tabs: { key: FeedTab; label: string }[] = [
     { key: "news", label: t("news") },
+    { key: "community", label: t("community") },
   ];
 
-  if (COMMUNITY_TAB_ENABLED) {
-    tabs.push({ key: "community", label: t("community") });
+  if (!COMMUNITY_TAB_ENABLED) {
+    return null;
   }
 
   return (
