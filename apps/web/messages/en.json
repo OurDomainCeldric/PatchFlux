@@ -14,7 +14,8 @@
   "tabs": {
     "ariaLabel": "Feed type",
     "news": "News & Blogs",
-    "community": "Community"
+    "community": "Community",
+    "communityTemporarilyDisabled": "The community section is temporarily disabled while we prepare reliable replacement sources for the failed Reddit feeds."
   },
   "nav": {
     "news": "News",

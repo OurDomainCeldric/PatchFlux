@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 export type FeedTab = "news" | "community";
+export const COMMUNITY_TAB_ENABLED = false;
 
 interface FeedTabsProps {
   pathname: string;
@@ -17,6 +18,16 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
 
   const rawTab = searchParams?.get("tab");
   const activeTab: FeedTab = rawTab === "community" ? "community" : "news";
+
+  useEffect(() => {
+    if (rawTab === "community" && !COMMUNITY_TAB_ENABLED) {
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
+      next.delete("tab");
+      next.delete("hot");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [pathname, rawTab, router, searchParams]);
 
   const switchTab = useCallback(
     (tab: FeedTab) => {
@@ -40,8 +51,11 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
 
   const tabs: { key: FeedTab; label: string }[] = [
     { key: "news", label: t("news") },
-    { key: "community", label: t("community") },
   ];
+
+  if (COMMUNITY_TAB_ENABLED) {
+    tabs.push({ key: "community", label: t("community") });
+  }
 
   return (
     <nav

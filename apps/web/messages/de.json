@@ -14,7 +14,8 @@
   "tabs": {
     "ariaLabel": "Feed-Auswahl",
     "news": "News & Blogs",
-    "community": "Community"
+    "community": "Community",
+    "communityTemporarilyDisabled": "Die Community-Sektion ist vorübergehend deaktiviert, während wir verlässliche Ersatzquellen für die bisher ausgefallenen Reddit-Feeds vorbereiten."
   },
   "nav": {
     "news": "News",
