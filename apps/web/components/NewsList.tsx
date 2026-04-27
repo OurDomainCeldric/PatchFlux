@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { fetchNews, type NewsItem } from "@/lib/api";
 import {
   filtersToQuery,
+  isDefaultTopicSet,
   readFiltersFromParams,
   type FilterState,
 } from "@/components/FilterBar";
@@ -46,6 +47,7 @@ export function NewsList({ pathname }: NewsListProps) {
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const requestIdRef = useRef(0);
+  const hasNoSelectedTopics = filters.topics.size === 0;
 
   const fetchOptions = useMemo(() => {
     const opts: Parameters<typeof fetchNews>[0] = { limit: PAGE_SIZE };
@@ -57,17 +59,25 @@ export function NewsList({ pathname }: NewsListProps) {
     if (filters.deduped) opts.deduped = true;
     // Community tab never passes hot=true (priority not relevant for forum posts)
     if (!isCommunity && filters.onlyHot) opts.hot = true;
-    if (filters.topics.size > 0) opts.topics = Array.from(filters.topics);
+    if (hasNoSelectedTopics) {
+      opts.topics = [];
+    } else if (!isDefaultTopicSet(filters.topics)) {
+      opts.topics = Array.from(filters.topics);
+    }
     // Always pass community flag so the API applies the right tier filter
     opts.community = isCommunity;
     return opts;
-  }, [filters, isCommunity]);
+  }, [filters, hasNoSelectedTopics, isCommunity]);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
     setItems(null);
     setNextCursor(null);
     setError(null);
+    if (hasNoSelectedTopics) {
+      setItems([]);
+      return;
+    }
     fetchNews(fetchOptions)
       .then((response) => {
         if (requestIdRef.current !== requestId) return;
@@ -78,7 +88,7 @@ export function NewsList({ pathname }: NewsListProps) {
         if (requestIdRef.current !== requestId) return;
         setError(err instanceof Error ? err.message : String(err));
       });
-  }, [fetchOptions]);
+  }, [fetchOptions, hasNoSelectedTopics]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -322,13 +332,8 @@ function describeActiveFilters(state: FilterState, t: Translator): string[] {
   if (state.q) out.push(t("filterLabels.q", { value: state.q }));
   if (state.deduped) out.push(t("filterLabels.deduped"));
   if (state.onlyHot) out.push(t("filterLabels.onlyHot"));
-  // Only describe topics when they deviate from the default (CVE off, others on).
-  const topicsArr = Array.from(state.topics);
-  const defaultTopics = new Set(["new-features", "changes", "security", "compliance", "outage"]);
-  const isDefault =
-    topicsArr.length === defaultTopics.size &&
-    topicsArr.every((x) => defaultTopics.has(x));
-  if (!isDefault) {
+  if (!isDefaultTopicSet(state.topics)) {
+    const topicsArr = Array.from(state.topics);
     const labels = topicsArr.map((x) => t(`topics.${x as "cve"}`));
     out.push(
       t("filterLabels.topics", {

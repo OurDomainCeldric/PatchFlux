@@ -53,6 +53,12 @@ def test_changes_deprecation() -> None:
     assert "changes" in compute_topics("Azure Functions v3 retirement in 2027")
 
 
+def test_changes_consuming_minutes() -> None:
+    assert "changes" in compute_topics(
+        "GitHub Copilot code review will start consuming GitHub Actions minutes on June 1, 2026"
+    )
+
+
 def test_compliance_flex_routing() -> None:
     topics = compute_topics("Microsoft enables Flex Routing for Copilot in EU")
     assert "compliance" in topics
@@ -64,6 +70,20 @@ def test_compliance_dsgvo() -> None:
 
 def test_outage_incident() -> None:
     assert "outage" in compute_topics("Azure outage affecting EU regions")
+
+
+def test_outage_sign_in_failures() -> None:
+    assert "outage" in compute_topics(
+        "Microsoft says Outlook.com outage is causing sign-in failures"
+    )
+
+
+def test_security_flaw_and_patches() -> None:
+    topics = compute_topics(
+        "Microsoft releases emergency patches for critical ASP.NET flaw"
+    )
+    assert "security" in topics
+    assert "cve" not in topics
 
 
 def test_boring_title_has_no_topics() -> None:
