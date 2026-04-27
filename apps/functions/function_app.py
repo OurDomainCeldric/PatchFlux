@@ -80,6 +80,7 @@ MID_FREQ_SOURCES = {
     "reddit-microsoft",
 }
 LOW_FREQ_SOURCES = {"m365-roadmap", "azure-updates"}
+DISABLED_SOURCE_IDS = {"reddit-sysadmin", "reddit-microsoft"}
 
 # If a source has not been fetched successfully within this window, /health
 # reports it as stale.
@@ -120,6 +121,10 @@ def _store() -> NewsStore:
     )
 
 
+def _is_enabled_source_id(source_id: str) -> bool:
+    return source_id not in DISABLED_SOURCE_IDS
+
+
 # Create tables on cold start so read-only endpoints don't 500 before the
 # first ingest run. Safe & idempotent.
 try:
@@ -129,7 +134,7 @@ except Exception:  # noqa: BLE001 — logged by Application Insights via logger
 
 
 def _all_adapters() -> list[SourceAdapter]:
-    return [
+    adapters = [
         M365RoadmapAdapter(),
         AzureUpdatesAdapter(),
         MSRCAdapter(),
@@ -147,6 +152,7 @@ def _all_adapters() -> list[SourceAdapter]:
         RedditSysadminAdapter(),
         RedditMicrosoftAdapter(),
     ]
+    return [adapter for adapter in adapters if _is_enabled_source_id(adapter.source_id)]
 
 
 def _adapters_matching(ids: Iterable[str]) -> list[SourceAdapter]:
@@ -298,6 +304,11 @@ def ingest_http(req: func.HttpRequest) -> func.HttpResponse:
     * ``source=<id>`` – optional; run only the named adapter.
     """
     source_param = req.params.get("source")
+    if source_param and not _is_enabled_source_id(source_param):
+        return _json_response(
+            {"error": "source_disabled", "sourceId": source_param},
+            status_code=400,
+        )
     requested = {source_param} if source_param else None
     log.info("ingest_http triggered source=%s", source_param or "<all>")
     result = _run_ingest(requested)
@@ -441,6 +452,7 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     duration_ms = int((time.monotonic() - start) * 1000)
 
     serialized = [_serialize_entity(e) for e in page.items]
+    serialized = [i for i in serialized if _is_enabled_source_id(str(i["sourceId"]))]
     if community_filter is not None:
         if community_filter == 3:
             serialized = [i for i in serialized if i["sourceTier"] == 3]
@@ -489,11 +501,14 @@ def api_sources(req: func.HttpRequest) -> func.HttpResponse:
     store = _store()
     sources = []
     for ent in store.list_source_health():
+        source_id = str(ent.get("RowKey") or "")
+        if not _is_enabled_source_id(source_id):
+            continue
         last_fetch = ent.get("LastFetchAt")
         if isinstance(last_fetch, datetime):
             last_fetch = last_fetch.isoformat()
         record = {
-            "sourceId": ent.get("RowKey"),
+            "sourceId": source_id,
             "lastFetchAt": last_fetch,
             "lastStatus": ent.get("LastStatus"),
             # Defence in depth: any legacy rows (pre-sanitizer) are also
@@ -578,6 +593,9 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
     now = datetime.now(UTC)
     try:
         for ent in store.list_source_health():
+            source_id = str(ent.get("RowKey") or "")
+            if not _is_enabled_source_id(source_id):
+                continue
             last_fetch = ent.get("LastFetchAt")
             status = ent.get("LastStatus") or ""
             if (
@@ -585,7 +603,7 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
                 or (now - last_fetch.astimezone(UTC)) > STALE_WINDOW
                 or status == "error"
             ):
-                stale.append(str(ent.get("RowKey")))
+                stale.append(source_id)
     except Exception:  # noqa: BLE001
         storage_ok = False
         log.exception("health check failed to enumerate SourceHealth")
@@ -606,7 +624,11 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
 def _feed_items(limit: int = 50) -> list[dict]:
     store = _store()
     page = store.query_page(limit=limit, deduped=True)
-    return [_serialize_entity(e) for e in page.items]
+    return [
+        item
+        for item in (_serialize_entity(e) for e in page.items)
+        if _is_enabled_source_id(str(item["sourceId"]))
+    ]
 
 
 def _rfc822(dt: datetime) -> str:

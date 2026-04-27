@@ -31,7 +31,7 @@ Inspect Azure timer execution, Function logs, and host configuration for `ingest
 ### P0: Resolve or disable Reddit sources cleanly
 
 Problem:
-`reddit-microsoft` and `reddit-sysadmin` currently fail with `HTTP 403`.
+`reddit-microsoft` and `reddit-sysadmin` currently fail with `HTTP 403` in the Azure runtime and are temporarily disabled in production.
 
 Value:
 Avoids permanent false alarms in source health and prevents noisy operational status for sources that are no longer practically ingestible.

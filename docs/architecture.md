@@ -238,10 +238,11 @@ This means the symptom is primarily a visibility and filtering problem, not proo
 
 ### Confirmed live ingest and operations issues
 
-- `reddit-microsoft`: `HTTP 403`
-- `reddit-sysadmin`: `HTTP 403`
+- `reddit-microsoft`: `HTTP 403` from the Azure runtime
+- `reddit-sysadmin`: `HTTP 403` from the Azure runtime
 - `msrc` and `cisa-kev` were reported stale by `/api/health`
 - their `LastFetchAt` values were still on April 26, 2026 at around `09:00` local time, which strongly suggests the high-frequency ingest path stopped firing or stopped completing successfully
+- the two Reddit community feeds are temporarily disabled in production so they no longer keep `/api/health` in a permanently degraded-looking state
 
 ### What still appears healthy
 
