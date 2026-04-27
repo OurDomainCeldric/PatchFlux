@@ -20,6 +20,7 @@ class RedditMicrosoftAdapter(SourceAdapter):
     source_tier = 3
     # Newest posts — every submission is on-topic by subreddit definition.
     feed_url = "https://www.reddit.com/r/microsoft/new.rss?limit=50"
+    fallback_urls = ("https://old.reddit.com/r/microsoft/new.rss?limit=50",)
 
     def fetch(
         self,
@@ -36,4 +37,5 @@ class RedditMicrosoftAdapter(SourceAdapter):
             etag=etag,
             last_modified=last_modified,
             default_language="en",
+            fallback_urls=self.fallback_urls,
         )

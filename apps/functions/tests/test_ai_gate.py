@@ -207,3 +207,16 @@ def test_gate_bypasses_on_malformed_reply() -> None:
     assert stats.bypassed == 1
     assert stats.input_tokens == 10
     assert stats.output_tokens == 5
+
+
+def test_gate_bypasses_high_frequency_security_sources_without_calls() -> None:
+    client = _FakeClient([])  # must never be called
+    gate = _gate(client)
+    stats = GateRunStats()
+    items = [_mk_item("CVE-2026-12345"), _mk_item("CVE-2026-12346")]
+    kept = gate.process(items, source_id="msrc", stats=stats)
+    assert kept == items
+    assert stats.calls == 0
+    assert stats.bypassed == 2
+    assert stats.per_source["msrc"]["bypassed"] == 2
+    assert client.calls == []

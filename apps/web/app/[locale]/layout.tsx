@@ -65,7 +65,7 @@ export default async function LocaleLayout({
   ).replace(/\/$/, "");
   const apiBaseUrl = (
     process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "https://func-omlorsnews-prod.azurewebsites.net/api"
+    "/api"
   ).replace(/\/$/, "");
   // Derive the API origin for preconnect (strip /api and any trailing path).
   let apiOrigin = "";

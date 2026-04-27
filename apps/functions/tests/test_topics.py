@@ -12,6 +12,7 @@ def test_all_topics_is_stable() -> None:
         "security",
         "compliance",
         "outage",
+        "community",
     )
 
 
