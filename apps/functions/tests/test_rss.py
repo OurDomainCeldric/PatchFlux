@@ -30,7 +30,7 @@ def test_fetch_and_parse_retries_fallback_after_403(monkeypatch) -> None:
     </item>
   </channel>
 </rss>
-""".encode("utf-8")
+""".encode()
         return (200, "etag-2", "Mon, 27 Apr 2026 12:00:00 GMT", body)
 
     monkeypatch.setattr(_rss, "fetch_feed", fake_fetch_feed)
