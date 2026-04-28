@@ -17,15 +17,22 @@ export const TOPICS = [
 ] as const;
 export type Topic = (typeof TOPICS)[number];
 
-/** Default topic selection for the main feed: all editorial topics, no community-only chip. */
+/** Default topic selection for the main feed: all editorial topics except CVEs. */
 export const DEFAULT_TOPICS: readonly Topic[] = TOPICS.filter(
+  (t) => t !== "community" && t !== "cve",
+);
+export const NEWS_TOPICS: readonly Topic[] = TOPICS.filter(
   (t) => t !== "community",
 );
-const NEWS_TOPICS: readonly Topic[] = DEFAULT_TOPICS;
 
 export function isDefaultTopicSet(s: Set<Topic>): boolean {
   if (s.size !== DEFAULT_TOPICS.length) return false;
   return DEFAULT_TOPICS.every((t) => s.has(t));
+}
+
+export function areAllNewsTopicsSelected(s: Set<Topic>): boolean {
+  if (s.size !== NEWS_TOPICS.length) return false;
+  return NEWS_TOPICS.every((t) => s.has(t));
 }
 
 const SINCE_OPTIONS: { value: string; labelKey: string }[] = [

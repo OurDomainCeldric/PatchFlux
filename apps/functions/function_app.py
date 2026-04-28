@@ -227,8 +227,8 @@ def _list_source_health_views() -> list[SourceHealthView]:
     for source_id in source_ids:
         ent = rows_by_id.get(source_id, {})
         last_status = str(ent.get("LastStatus") or "") or None
-        last_attempt_at = _as_utc_datetime(ent.get("LastAttemptAt"))
         last_fetch_at = _as_utc_datetime(ent.get("LastFetchAt"))
+        last_attempt_at = _as_utc_datetime(ent.get("LastAttemptAt")) or last_fetch_at
         last_success_at = _as_utc_datetime(ent.get("LastSuccessAt")) or last_fetch_at
         state = _classify_source_state(
             source_id=source_id,
@@ -525,12 +525,21 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     topics_filter: set[str] = {
         t.strip().lower() for t in topics_param.split(",") if t.strip()
     }
+    exclude_topics_param = (req.params.get("exclude_topics") or "").strip()
+    exclude_topics_filter: set[str] = {
+        t.strip().lower() for t in exclude_topics_param.split(",") if t.strip()
+    }
 
     store = _store()
     start = time.monotonic()
     # When filtering by priority, topics, or tier we need to scan more raw rows
     # because all three filters are applied post-query.
-    need_post_filter = min_priority > 0 or bool(topics_filter) or community_filter is not None
+    need_post_filter = (
+        min_priority > 0
+        or bool(topics_filter)
+        or bool(exclude_topics_filter)
+        or community_filter is not None
+    )
     raw_limit = limit if not need_post_filter else min(limit * 10, 500)
     page = store.query_page(
         limit=raw_limit,
@@ -553,6 +562,12 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
             serialized = [i for i in serialized if i["sourceTier"] <= 2]
     if min_priority > 0:
         serialized = [i for i in serialized if i["priority"] >= min_priority]
+    if exclude_topics_filter:
+        serialized = [
+            i
+            for i in serialized
+            if not exclude_topics_filter.intersection(str(topic).lower() for topic in i["topics"])
+        ]
     if topics_filter:
         serialized = [
             i for i in serialized if topics_filter.intersection(i["topics"])

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchNews, type NewsItem } from "@/lib/api";
 import {
+  areAllNewsTopicsSelected,
   filtersToQuery,
   isDefaultTopicSet,
   readFiltersFromParams,
@@ -61,7 +62,9 @@ export function NewsList({ pathname }: NewsListProps) {
     if (!isCommunity && filters.onlyHot) opts.hot = true;
     if (hasNoSelectedTopics) {
       opts.topics = [];
-    } else if (!isDefaultTopicSet(filters.topics)) {
+    } else if (isDefaultTopicSet(filters.topics)) {
+      opts.excludeTopics = ["cve"];
+    } else if (!areAllNewsTopicsSelected(filters.topics)) {
       opts.topics = Array.from(filters.topics);
     }
     // Always pass community flag so the API applies the right tier filter
