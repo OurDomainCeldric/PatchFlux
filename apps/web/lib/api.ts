@@ -103,6 +103,43 @@ export interface VisitCountsResponse {
   timezone: string;
 }
 
+export interface CommentItem {
+  id: string;
+  newsItemId: string;
+  displayName: string;
+  body: string;
+  status: "visible" | "pending" | "hidden" | "rejected" | "flagged";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCommentItem extends CommentItem {
+  userId: string;
+  commentPartitionKey: string;
+  commentRowKey: string;
+  moderationReason: string | null;
+  reportCount: number;
+}
+
+export interface CommentsResponse {
+  comments: CommentItem[];
+  count: number;
+}
+
+export interface AdminCommentsResponse {
+  comments: AdminCommentItem[];
+  count: number;
+  status: AdminCommentItem["status"];
+}
+
+export interface CreateCommentInput {
+  newsItemId: string;
+  displayName: string;
+  body: string;
+  userId: string;
+  userSecret: string;
+}
+
 export interface NewsFilters {
   source?: string;
   product?: string;
@@ -226,4 +263,67 @@ export async function trackVisit(): Promise<VisitCountsResponse> {
     throw new Error(`Visit tracking failed with ${response.status}`);
   }
   return (await response.json()) as VisitCountsResponse;
+}
+
+export function fetchComments(newsItemId: string): Promise<CommentsResponse> {
+  return request<CommentsResponse>(
+    "/comments",
+    new URLSearchParams({ item: newsItemId }),
+  );
+}
+
+export async function createComment(input: CreateCommentInput): Promise<{
+  comment: CommentItem;
+  status: CommentItem["status"];
+}> {
+  const response = await fetch(joinUrl("/comments", new URLSearchParams()), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Comment failed with ${response.status}`);
+  }
+  return (await response.json()) as { comment: CommentItem; status: CommentItem["status"] };
+}
+
+export function fetchModerationComments(
+  adminKey: string,
+  status: AdminCommentItem["status"] = "pending",
+): Promise<AdminCommentsResponse> {
+  return request<AdminCommentsResponse>(
+    "/comments/moderation",
+    new URLSearchParams({ code: adminKey, status }),
+  );
+}
+
+export async function moderateComment(
+  adminKey: string,
+  input: {
+    commentPartitionKey: string;
+    commentRowKey: string;
+    action: "approve" | "hide" | "flag" | "reject" | "ban_user";
+    reason?: string;
+  },
+): Promise<{ comment: AdminCommentItem; action: string }> {
+  const response = await fetch(
+    joinUrl("/comments/moderate", new URLSearchParams({ code: adminKey })),
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Moderation failed with ${response.status}`);
+  }
+  return (await response.json()) as { comment: AdminCommentItem; action: string };
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchNews, type NewsItem } from "@/lib/api";
+import { CommentsPanel } from "@/components/CommentsPanel";
 import {
   areAllNewsTopicsSelected,
   filtersToQuery,
@@ -294,6 +295,7 @@ export function NewsList({ pathname }: NewsListProps) {
                 </div>
                 {hot && <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />}
                 {notable && <div className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}
+                <CommentsPanel item={item} />
               </li>
               );
             })}

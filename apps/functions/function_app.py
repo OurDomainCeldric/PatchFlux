@@ -5,6 +5,8 @@ HTTP routes
 - ``GET  /api/news``       – filtered & paginated news feed
 - ``GET  /api/sources``    – source-health status list
 - ``GET  /api/products``   – distinct product IDs with occurrence counts
+- ``GET|POST /api/comments`` – comments for one news item
+- ``GET|POST /api/comments/*`` – Function-key protected moderation
 - ``GET  /api/feed.xml``   – RSS 2.0 export (headline + URL + source only)
 - ``GET  /api/atom.xml``   – Atom 1.0 export (headline + URL + source only)
 - ``GET  /api/health``     – lightweight liveness probe (status, storage,
@@ -21,6 +23,7 @@ Timer triggers
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import re
@@ -63,6 +66,10 @@ log = logging.getLogger(__name__)
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 INTER_SOURCE_DELAY_SECONDS = 1.0
+COMMENT_BODY_MAX_CHARS = 1000
+COMMENT_DISPLAY_NAME_MAX_CHARS = 40
+COMMENT_MIN_SECONDS_BETWEEN_POSTS = 60
+COMMENT_MAX_PER_DAY = 20
 
 # Grouping used by both the timer triggers and ``?source=<id>`` on /ingest.
 HIGH_FREQ_SOURCES = {"msrc", "cisa-kev"}
@@ -95,6 +102,19 @@ _ERROR_PATH_PATTERN = re.compile(
     r"(/[^\s'\"]*\.py[^\s'\"]*|[A-Za-z]:\\[^\s'\"]+|line\s+\d+|File\s+\"[^\"]+\")",
     re.IGNORECASE,
 )
+_COMMENT_URL_PATTERN = re.compile(
+    r"(?i)(https?://|www\.|[a-z0-9][a-z0-9-]{1,62}\.(?:com|net|org|de|io|dev|app|info|biz|ru|cn|uk|eu)\b)"
+)
+_COMMENT_BLOCKED_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bheil\s+hitler\b",
+        r"\bwhite\s+power\b",
+        r"\bkkk\b",
+        r"\bnazi\s+(?:propaganda|salute|symbol)\b",
+    )
+]
+_COMMENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,96}$")
 
 
 def _safe_error_summary(exc: BaseException | str | None, *, limit: int = 120) -> str | None:
@@ -121,6 +141,10 @@ def _store() -> NewsStore:
         news_table=settings.news_table_name,
         source_health_table=settings.source_health_table_name,
         visit_counter_table=settings.visit_counter_table_name,
+        comment_user_table=settings.comment_user_table_name,
+        comment_table=settings.comment_table_name,
+        comment_moderation_table=settings.comment_moderation_table_name,
+        comment_rate_limit_table=settings.comment_rate_limit_table_name,
     )
 
 
@@ -455,6 +479,66 @@ def _visit_day_key(now: datetime | None = None) -> str:
     return current.astimezone(UTC).date().isoformat()
 
 
+def _comment_secret_hash(user_id: str, secret: str) -> str:
+    # The browser-local secret is high entropy; hashing avoids storing it in clear text.
+    return hashlib.sha256(f"{user_id}:{secret}".encode("utf-8")).hexdigest()
+
+
+def _constant_time_equal(left: object, right: str) -> bool:
+    return hmac.compare_digest(str(left or ""), right)
+
+
+def _clean_comment_text(value: object, *, max_chars: int) -> str:
+    text = str(value or "")
+    text = " ".join(text.replace("\r", "\n").split())
+    return text[:max_chars].strip()
+
+
+def _comment_validation_error(display_name: str, body: str) -> str | None:
+    if not display_name:
+        return "display_name_required"
+    if not body:
+        return "body_required"
+    if len(body) > COMMENT_BODY_MAX_CHARS:
+        return "body_too_long"
+    if _COMMENT_URL_PATTERN.search(body):
+        return "links_not_allowed"
+    if any(pattern.search(body) for pattern in _COMMENT_BLOCKED_PATTERNS):
+        return "blocked_language"
+    return None
+
+
+def _request_json(req: func.HttpRequest) -> dict:
+    try:
+        data = req.get_json()
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _serialize_comment(ent: dict, *, admin: bool = False) -> dict:
+    payload = {
+        "id": ent.get("CommentId"),
+        "newsItemId": ent.get("NewsItemId"),
+        "displayName": ent.get("DisplayName"),
+        "body": ent.get("Body"),
+        "status": ent.get("Status"),
+        "createdAt": _iso(ent.get("CreatedAt")),
+        "updatedAt": _iso(ent.get("UpdatedAt")),
+    }
+    if admin:
+        payload.update(
+            {
+                "userId": ent.get("UserId"),
+                "commentPartitionKey": ent.get("PartitionKey"),
+                "commentRowKey": ent.get("RowKey"),
+                "moderationReason": ent.get("ModerationReason") or None,
+                "reportCount": int(ent.get("ReportCount") or 0),
+            }
+        )
+    return payload
+
+
 def _serialize_entity(ent: dict) -> dict:
     title = ent.get("Title") or ""
     source_id = ent.get("SourceId") or ""
@@ -771,6 +855,147 @@ def api_visits_track(req: func.HttpRequest) -> func.HttpResponse:
             "allTime": counts["allTime"],
             "dayKey": day_key,
             "timezone": "UTC",
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments")
+@app.route(route="comments", methods=["GET", "POST"])
+def api_comments(req: func.HttpRequest) -> func.HttpResponse:
+    if req.method == "GET":
+        news_item_id = (req.params.get("item") or "").strip()
+        if not news_item_id:
+            return _json_response({"error": "missing_item"}, status_code=400)
+        comments = _store().list_visible_comments(news_item_id=news_item_id, limit=50)
+        return _json_response(
+            {
+                "comments": [_serialize_comment(comment) for comment in comments],
+                "count": len(comments),
+            },
+            cache_seconds=30,
+        )
+
+    data = _request_json(req)
+    news_item_id = _clean_comment_text(data.get("newsItemId"), max_chars=160)
+    user_id = _clean_comment_text(data.get("userId"), max_chars=96)
+    user_secret = _clean_comment_text(data.get("userSecret"), max_chars=160)
+    display_name = _clean_comment_text(
+        data.get("displayName"), max_chars=COMMENT_DISPLAY_NAME_MAX_CHARS
+    )
+    body_raw = str(data.get("body") or "")
+    body = _clean_comment_text(body_raw, max_chars=COMMENT_BODY_MAX_CHARS)
+
+    if not news_item_id:
+        return _json_response({"error": "missing_item"}, status_code=400)
+    if not _COMMENT_ID_PATTERN.match(user_id) or not _COMMENT_ID_PATTERN.match(user_secret):
+        return _json_response({"error": "invalid_user_identity"}, status_code=400)
+    if len(body_raw) > COMMENT_BODY_MAX_CHARS:
+        return _json_response({"error": "body_too_long"}, status_code=400)
+
+    validation_error = _comment_validation_error(display_name, body)
+    if validation_error:
+        return _json_response({"error": validation_error}, status_code=400)
+
+    store = _store()
+    secret_hash = _comment_secret_hash(user_id, user_secret)
+    user = store.get_comment_user(user_id)
+    if user is not None and not _constant_time_equal(user.get("SecretHash"), secret_hash):
+        return _json_response({"error": "invalid_user_identity"}, status_code=403)
+    if user is not None and str(user.get("Status") or "active") in {"muted", "banned"}:
+        return _json_response({"error": "user_not_allowed"}, status_code=403)
+
+    day_key = _visit_day_key()
+    rate = store.get_comment_rate_limit(user_id=user_id, day_key=day_key)
+    if rate is not None:
+        count = int(rate.get("Count") or 0)
+        last_comment_at = _as_utc_datetime(rate.get("LastCommentAt"))
+        if count >= COMMENT_MAX_PER_DAY:
+            return _json_response({"error": "rate_limited_daily"}, status_code=429)
+        if (
+            last_comment_at is not None
+            and datetime.now(UTC) - last_comment_at
+            < timedelta(seconds=COMMENT_MIN_SECONDS_BETWEEN_POSTS)
+        ):
+            return _json_response({"error": "rate_limited_recent"}, status_code=429)
+
+    store.upsert_comment_user(
+        user_id=user_id,
+        display_name=display_name,
+        secret_hash=secret_hash,
+    )
+    store.record_comment_rate_limit(user_id=user_id, day_key=day_key)
+    comment = store.add_comment(
+        news_item_id=news_item_id,
+        user_id=user_id,
+        display_name=display_name,
+        body=body,
+        status="visible",
+    )
+    return _json_response(
+        {
+            "comment": _serialize_comment(comment),
+            "status": "visible",
+        },
+        status_code=201,
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments_moderation")
+@app.route(route="comments/moderation", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def api_comments_moderation(req: func.HttpRequest) -> func.HttpResponse:
+    status = (req.params.get("status") or "pending").strip().lower()
+    if status not in {"pending", "flagged", "hidden", "rejected"}:
+        return _json_response({"error": "invalid_status"}, status_code=400)
+    limit = _parse_int(req.params.get("limit"), default=50, minimum=1, maximum=200)
+    comments = _store().list_moderation_comments(status=status, limit=limit)
+    return _json_response(
+        {
+            "comments": [_serialize_comment(comment, admin=True) for comment in comments],
+            "count": len(comments),
+            "status": status,
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments_moderate")
+@app.route(route="comments/moderate", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+def api_comments_moderate(req: func.HttpRequest) -> func.HttpResponse:
+    data = _request_json(req)
+    action = _clean_comment_text(data.get("action"), max_chars=32).lower()
+    reason = _clean_comment_text(data.get("reason"), max_chars=500)
+    comment_partition_key = _clean_comment_text(data.get("commentPartitionKey"), max_chars=240)
+    comment_row_key = _clean_comment_text(data.get("commentRowKey"), max_chars=240)
+    if action not in {"approve", "hide", "flag", "reject", "ban_user"}:
+        return _json_response({"error": "invalid_action"}, status_code=400)
+    if not comment_partition_key or not comment_row_key:
+        return _json_response({"error": "missing_comment"}, status_code=400)
+
+    store = _store()
+    moderation_action = "hide" if action == "ban_user" else action
+    comment = store.moderate_comment(
+        comment_partition_key=comment_partition_key,
+        comment_row_key=comment_row_key,
+        action=moderation_action,
+        reason=reason,
+    )
+    if comment is None:
+        return _json_response({"error": "comment_not_found"}, status_code=404)
+    if action == "ban_user":
+        store.update_comment_user_status(
+            user_id=str(comment.get("UserId") or ""),
+            status="banned",
+            note=reason,
+        )
+    return _json_response(
+        {
+            "comment": _serialize_comment(comment, admin=True),
+            "action": action,
         },
         cache_seconds=0,
         extra_headers={"Cache-Control": "no-store"},

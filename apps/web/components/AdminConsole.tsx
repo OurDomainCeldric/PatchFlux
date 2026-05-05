@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   fetchHealth,
+  fetchModerationComments,
   fetchSources,
+  moderateComment,
   triggerIngest,
+  type AdminCommentItem,
   type HealthResponse,
   type SourceHealth,
   type IngestResponse,
@@ -39,6 +42,10 @@ export function AdminConsole() {
   const [sources, setSources] = useState<SourceHealth[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<IngestResponse | null>(null);
+  const [moderationStatus, setModerationStatus] =
+    useState<AdminCommentItem["status"]>("flagged");
+  const [moderationComments, setModerationComments] = useState<AdminCommentItem[] | null>(null);
+  const [moderationReason, setModerationReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +115,48 @@ export function AdminConsole() {
       setSources(s.sources);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("admin.ingestError"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function loadModerationQueue() {
+    if (!savedKey) {
+      setError(t("admin.missingKey"));
+      return;
+    }
+    setBusy("__moderation__");
+    setError(null);
+    try {
+      const result = await fetchModerationComments(savedKey, moderationStatus);
+      setModerationComments(result.comments);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("admin.moderationError"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runModerationAction(
+    comment: AdminCommentItem,
+    action: "approve" | "hide" | "flag" | "reject" | "ban_user",
+  ) {
+    if (!savedKey) {
+      setError(t("admin.missingKey"));
+      return;
+    }
+    setBusy(`${action}:${comment.id}`);
+    setError(null);
+    try {
+      await moderateComment(savedKey, {
+        commentPartitionKey: comment.commentPartitionKey,
+        commentRowKey: comment.commentRowKey,
+        action,
+        reason: moderationReason,
+      });
+      await loadModerationQueue();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("admin.moderationError"));
     } finally {
       setBusy(null);
     }
@@ -268,6 +317,94 @@ export function AdminConsole() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-end gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">{t("admin.comments")}</h2>
+            <p className="text-xs text-zinc-500">{t("admin.commentsHint")}</p>
+          </div>
+          <select
+            value={moderationStatus}
+            onChange={(event) =>
+              setModerationStatus(event.target.value as AdminCommentItem["status"])
+            }
+            className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          >
+            <option value="flagged">{t("admin.commentStatuses.flagged")}</option>
+            <option value="hidden">{t("admin.commentStatuses.hidden")}</option>
+            <option value="rejected">{t("admin.commentStatuses.rejected")}</option>
+            <option value="pending">{t("admin.commentStatuses.pending")}</option>
+          </select>
+          <input
+            type="text"
+            value={moderationReason}
+            onChange={(event) => setModerationReason(event.target.value)}
+            placeholder={t("admin.moderationReason")}
+            className="min-w-[220px] rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          />
+          <button
+            type="button"
+            onClick={loadModerationQueue}
+            disabled={busy !== null || !savedKey}
+            className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            {busy === "__moderation__" ? t("admin.loading") : t("admin.loadComments")}
+          </button>
+        </div>
+
+        {moderationComments && moderationComments.length === 0 && (
+          <p className="text-sm text-zinc-500">{t("admin.noComments")}</p>
+        )}
+        {moderationComments && moderationComments.length > 0 && (
+          <div className="space-y-3">
+            {moderationComments.map((comment) => (
+              <article
+                key={`${comment.commentPartitionKey}:${comment.commentRowKey}`}
+                className="rounded border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-100">
+                    {comment.displayName}
+                  </span>
+                  <span>{comment.status}</span>
+                  <span className="font-mono">{comment.newsItemId}</span>
+                  <span className="font-mono">{comment.userId}</span>
+                </div>
+                <p className="mb-3 whitespace-pre-wrap break-words text-zinc-700 dark:text-zinc-200">
+                  {comment.body}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => runModerationAction(comment, "approve")}
+                    disabled={busy !== null}
+                    className="rounded border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                  >
+                    {t("admin.approveComment")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runModerationAction(comment, "hide")}
+                    disabled={busy !== null}
+                    className="rounded border border-amber-300 px-2 py-1 text-xs text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                  >
+                    {t("admin.hideComment")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runModerationAction(comment, "ban_user")}
+                    disabled={busy !== null}
+                    className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                  >
+                    {t("admin.banUser")}
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
