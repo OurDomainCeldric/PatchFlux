@@ -73,6 +73,9 @@
   },
   "votes": {
     "helpful": "Helpful",
+    "tierUseful": "Useful",
+    "tierWarm": "Warm",
+    "tierHot": "Hot",
     "title": "Mark this article as helpful"
   },
   "comments": {

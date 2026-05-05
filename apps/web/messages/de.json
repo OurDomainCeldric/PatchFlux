@@ -73,6 +73,9 @@
   },
   "votes": {
     "helpful": "Hilfreich",
+    "tierUseful": "Nützlich",
+    "tierWarm": "Warm",
+    "tierHot": "Hot",
     "title": "Diesen Artikel als hilfreich markieren"
   },
   "comments": {
