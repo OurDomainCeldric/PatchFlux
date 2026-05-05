@@ -944,6 +944,21 @@ def api_comments(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+@app.function_name(name="api_comment_counts")
+@app.route(route="comments/counts", methods=["GET"])
+def api_comment_counts(req: func.HttpRequest) -> func.HttpResponse:
+    raw_items = (req.params.get("items") or "").strip()
+    news_item_ids = [
+        _clean_comment_text(item, max_chars=160)
+        for item in raw_items.split(",")
+        if item.strip()
+    ][:100]
+    if not news_item_ids:
+        return _json_response({"counts": {}}, cache_seconds=30)
+    counts = _store().visible_comment_counts(news_item_ids=news_item_ids)
+    return _json_response({"counts": counts}, cache_seconds=30)
+
+
 @app.function_name(name="api_comments_moderation")
 @app.route(route="comments/moderation", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def api_comments_moderation(req: func.HttpRequest) -> func.HttpResponse:

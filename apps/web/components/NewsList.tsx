@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { fetchNews, type NewsItem } from "@/lib/api";
+import { fetchCommentCounts, fetchNews, type NewsItem } from "@/lib/api";
 import { CommentsPanel } from "@/components/CommentsPanel";
 import {
   areAllNewsTopicsSelected,
@@ -45,6 +45,7 @@ export function NewsList({ pathname }: NewsListProps) {
   );
 
   const [items, setItems] = useState<NewsItem[] | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -93,6 +94,24 @@ export function NewsList({ pathname }: NewsListProps) {
         setError(err instanceof Error ? err.message : String(err));
       });
   }, [fetchOptions, hasNoSelectedTopics]);
+
+  useEffect(() => {
+    if (!items || items.length === 0) {
+      setCommentCounts({});
+      return;
+    }
+    let cancelled = false;
+    fetchCommentCounts(items.map((item) => item.id))
+      .then((response) => {
+        if (!cancelled) setCommentCounts(response.counts);
+      })
+      .catch(() => {
+        if (!cancelled) setCommentCounts({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -295,7 +314,16 @@ export function NewsList({ pathname }: NewsListProps) {
                 </div>
                 {hot && <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />}
                 {notable && <div className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}
-                <CommentsPanel item={item} />
+                <CommentsPanel
+                  item={item}
+                  initialCount={commentCounts[item.id]}
+                  onCountChange={(newsItemId, count) =>
+                    setCommentCounts((previous) => ({
+                      ...previous,
+                      [newsItemId]: count,
+                    }))
+                  }
+                />
               </li>
               );
             })}

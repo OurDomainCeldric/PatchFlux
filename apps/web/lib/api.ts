@@ -126,6 +126,10 @@ export interface CommentsResponse {
   count: number;
 }
 
+export interface CommentCountsResponse {
+  counts: Record<string, number>;
+}
+
 export interface AdminCommentsResponse {
   comments: AdminCommentItem[];
   count: number;
@@ -269,6 +273,17 @@ export function fetchComments(newsItemId: string): Promise<CommentsResponse> {
   return request<CommentsResponse>(
     "/comments",
     new URLSearchParams({ item: newsItemId }),
+  );
+}
+
+export function fetchCommentCounts(newsItemIds: string[]): Promise<CommentCountsResponse> {
+  const uniqueIds = Array.from(new Set(newsItemIds)).filter(Boolean);
+  if (uniqueIds.length === 0) {
+    return Promise.resolve({ counts: {} });
+  }
+  return request<CommentCountsResponse>(
+    "/comments/counts",
+    new URLSearchParams({ items: uniqueIds.join(",") }),
   );
 }
 

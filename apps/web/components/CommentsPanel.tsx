@@ -20,6 +20,8 @@ interface CommentIdentity {
 
 interface CommentsPanelProps {
   item: NewsItem;
+  initialCount?: number;
+  onCountChange?: (newsItemId: string, count: number) => void;
 }
 
 function randomToken() {
@@ -91,7 +93,7 @@ function errorLabel(error: string, t: ReturnType<typeof useTranslations>) {
   }
 }
 
-export function CommentsPanel({ item }: CommentsPanelProps) {
+export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPanelProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -125,9 +127,10 @@ export function CommentsPanel({ item }: CommentsPanelProps) {
   }, [comments, item.id, open]);
 
   const countLabel = useMemo(() => {
-    if (comments === null) return t("comments.toggle");
-    return t("comments.toggleWithCount", { count: comments.length });
-  }, [comments, t]);
+    const count = comments?.length ?? initialCount;
+    if (typeof count !== "number") return t("comments.toggle");
+    return t("comments.toggleWithCount", { count });
+  }, [comments, initialCount, t]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,7 +148,14 @@ export function CommentsPanel({ item }: CommentsPanelProps) {
       });
       saveIdentity(nextIdentity);
       setIdentity(nextIdentity);
-      setComments((previous) => [result.comment, ...(previous ?? [])]);
+      setComments((previous) => {
+        const next = [result.comment, ...(previous ?? [])];
+        onCountChange?.(item.id, next.length);
+        return next;
+      });
+      if (comments === null) {
+        onCountChange?.(item.id, (initialCount ?? 0) + 1);
+      }
       setBody("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -225,7 +235,7 @@ export function CommentsPanel({ item }: CommentsPanelProps) {
               </span>
               <button
                 type="submit"
-                disabled={busy}
+                disabled={busy || comments === null}
                 className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
               >
                 {busy ? t("comments.sending") : t("comments.submit")}

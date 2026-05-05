@@ -589,6 +589,21 @@ class NewsStore:
                     break
         return comments
 
+    def visible_comment_counts(self, *, news_item_ids: Iterable[str]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        with self._comment_client() as client:
+            for news_item_id in news_item_ids:
+                count = 0
+                entities = client.query_entities(
+                    query_filter="PartitionKey eq @pk and Status eq @status",
+                    parameters={"pk": f"article:{news_item_id}", "status": "visible"},
+                    select=["RowKey"],
+                )
+                for _ in entities:
+                    count += 1
+                counts[news_item_id] = count
+        return counts
+
     def list_moderation_comments(self, *, status: str, limit: int = 100) -> list[dict]:
         comments: list[dict] = []
         with self._comment_moderation_client() as index_client:
