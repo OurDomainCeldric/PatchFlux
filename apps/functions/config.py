@@ -15,6 +15,8 @@ class Settings:
     comment_table_name: str
     comment_moderation_table_name: str
     comment_rate_limit_table_name: str
+    article_vote_table_name: str
+    article_user_vote_table_name: str
     ai_budget_table_name: str
     user_agent: str
     # --- AI relevance gate (all optional; off by default) --------------------
@@ -74,6 +76,10 @@ def get_settings() -> Settings:
         ),
         comment_rate_limit_table_name=os.environ.get(
             "COMMENT_RATE_LIMIT_TABLE_NAME", "CommentRateLimits"
+        ),
+        article_vote_table_name=os.environ.get("ARTICLE_VOTE_TABLE_NAME", "ArticleVotes"),
+        article_user_vote_table_name=os.environ.get(
+            "ARTICLE_USER_VOTE_TABLE_NAME", "ArticleUserVotes"
         ),
         ai_budget_table_name=os.environ.get("AI_BUDGET_TABLE_NAME", "AiBudget"),
         user_agent=os.environ.get(

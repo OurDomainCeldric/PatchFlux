@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from function_app import (
     COMMENT_BODY_MAX_CHARS,
     _comment_secret_hash,
     _comment_validation_error,
     _clean_comment_text,
+    _hot_score,
 )
 
 
@@ -39,3 +42,10 @@ def test_comment_secret_hash_is_stable_and_user_scoped() -> None:
 
 def test_body_limit_constant_is_not_too_large_for_table_storage() -> None:
     assert COMMENT_BODY_MAX_CHARS <= 1000
+
+
+def test_hot_score_cools_older_items() -> None:
+    now = datetime(2026, 5, 5, 12, 0, tzinfo=UTC)
+    fresh = {"publishedAt": (now - timedelta(hours=1)).isoformat()}
+    old = {"publishedAt": (now - timedelta(days=3)).isoformat()}
+    assert _hot_score(fresh, 3, now=now) > _hot_score(old, 3, now=now)

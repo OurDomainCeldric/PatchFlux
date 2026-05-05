@@ -13,6 +13,8 @@
   },
   "tabs": {
     "ariaLabel": "Feed type",
+    "recent": "Latest",
+    "hot": "Hottest",
     "news": "News & Blogs",
     "community": "Community",
     "communityTemporarilyDisabled": "The community section is temporarily disabled while we prepare reliable replacement sources for the failed Reddit feeds."
@@ -49,6 +51,7 @@
   },
   "news": {
     "empty": "No items match your filters.",
+    "emptyHot": "No helpful items in the current window yet. Mark articles as helpful to make this tab come alive.",
     "emptyWithFilters": "No items match the current filters.",
     "activeFilters": "Active filters: {filters}",
     "clearAll": "Clear all filters",
@@ -67,6 +70,10 @@
     "hotToday": "Hot today",
     "hotTicker": "Hot news ticker",
     "contentLanguage": "Content language"
+  },
+  "votes": {
+    "helpful": "Helpful",
+    "title": "Mark this article as helpful"
   },
   "comments": {
     "toggle": "Comments",
@@ -153,7 +160,7 @@
     "dpoHeading": "2. Data Protection Officer",
     "dpoBody": "A DPO is not required for this non-commercial private operation (§ 38 BDSG, Germany). Requests are handled directly by the controller.",
     "dataHeading": "3. What data we process",
-    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. Commenting uses a browser-local pseudonymous identity stored in localStorage (random user id and secret). If you post a comment, PatchFlux stores the display name, comment text, related news item, timestamps, moderation status, and a hash of the browser-local secret. No email address, password, IP address, or device fingerprint is stored by the comment system. In addition, the site stores a purely aggregate visit counter (today / all time) without saving IP addresses or personal profiles.",
+    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. Comments and helpful votes use a browser-local pseudonymous identity stored in localStorage (random user id and secret). If you post a comment, PatchFlux stores the display name, comment text, related news item, timestamps, moderation status, and a hash of the browser-local secret. If you mark an article as helpful, PatchFlux stores the related news item, pseudonymous user id, vote status, and timestamps. No email address, password, IP address, or device fingerprint is stored by the comment or vote system. In addition, the site stores a purely aggregate visit counter (today / all time) without saving IP addresses or personal profiles.",
     "legalBasisHeading": "4. Legal bases and purposes",
     "legalBasisBody": "The access data above is processed on the basis of Art. 6 (1) (f) GDPR (legitimate interests). The legitimate interest lies in the reliable, secure and abuse-free operation of the website and in short-term error and capacity analysis. Should future features process data for the performance of a contract (e.g. contact forms), the legal basis is Art. 6 (1) (b) GDPR.",
     "retentionHeading": "5. Retention",

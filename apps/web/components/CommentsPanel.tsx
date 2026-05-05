@@ -8,67 +8,17 @@ import {
   type CommentItem,
   type NewsItem,
 } from "@/lib/api";
+import {
+  readBrowserIdentity,
+  saveBrowserIdentity,
+  type BrowserIdentity,
+} from "@/lib/localIdentity";
 import { useLocale, useTranslations } from "next-intl";
-
-const STORAGE_KEY = "patchflux:commentIdentity";
-
-interface CommentIdentity {
-  userId: string;
-  userSecret: string;
-  displayName: string;
-}
 
 interface CommentsPanelProps {
   item: NewsItem;
   initialCount?: number;
   onCountChange?: (newsItemId: string, count: number) => void;
-}
-
-function randomToken() {
-  const browserCrypto = globalThis.crypto;
-  if (browserCrypto?.randomUUID) {
-    return browserCrypto.randomUUID();
-  }
-  const values = new Uint32Array(4);
-  browserCrypto?.getRandomValues(values);
-  return Array.from(values, (value) => value.toString(16).padStart(8, "0")).join("-");
-}
-
-function readIdentity(): CommentIdentity {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<CommentIdentity>;
-      if (parsed.userId && parsed.userSecret) {
-        return {
-          userId: parsed.userId,
-          userSecret: parsed.userSecret,
-          displayName: parsed.displayName ?? "",
-        };
-      }
-    }
-  } catch {
-    /* ignore corrupt localStorage */
-  }
-  const identity = {
-    userId: randomToken(),
-    userSecret: randomToken(),
-    displayName: "",
-  };
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
-  } catch {
-    /* ignore */
-  }
-  return identity;
-}
-
-function saveIdentity(identity: CommentIdentity) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
-  } catch {
-    /* ignore */
-  }
 }
 
 function errorLabel(error: string, t: ReturnType<typeof useTranslations>) {
@@ -98,7 +48,7 @@ export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPan
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<CommentItem[] | null>(null);
-  const [identity, setIdentity] = useState<CommentIdentity | null>(null);
+  const [identity, setIdentity] = useState<BrowserIdentity | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -106,7 +56,7 @@ export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPan
 
   useEffect(() => {
     if (!open || identity) return;
-    const next = readIdentity();
+    const next = readBrowserIdentity();
     setIdentity(next);
     setDisplayName(next.displayName);
   }, [identity, open]);
@@ -146,7 +96,7 @@ export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPan
         userId: nextIdentity.userId,
         userSecret: nextIdentity.userSecret,
       });
-      saveIdentity(nextIdentity);
+      saveBrowserIdentity(nextIdentity);
       setIdentity(nextIdentity);
       setComments((previous) => {
         const next = [result.comment, ...(previous ?? [])];

@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-export type FeedTab = "news" | "community";
-export const COMMUNITY_TAB_ENABLED = false;
+export type FeedTab = "recent" | "hot";
 
 interface FeedTabsProps {
   pathname: string;
@@ -17,31 +16,17 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
   const searchParams = useSearchParams();
 
   const rawTab = searchParams?.get("tab");
-  const activeTab: FeedTab = rawTab === "community" ? "community" : "news";
-
-  useEffect(() => {
-    if (rawTab === "community" && !COMMUNITY_TAB_ENABLED) {
-      const next = new URLSearchParams(searchParams?.toString() ?? "");
-      next.delete("tab");
-      next.delete("hot");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    }
-  }, [pathname, rawTab, router, searchParams]);
+  const activeTab: FeedTab = rawTab === "hot" ? "hot" : "recent";
 
   const switchTab = useCallback(
     (tab: FeedTab) => {
       // Preserve existing params but swap the tab, and clear filters that
       // don't make sense across tabs (hot, topics stay; source/product are OK too).
       const next = new URLSearchParams(searchParams?.toString() ?? "");
-      if (tab === "news") {
+      if (tab === "recent") {
         next.delete("tab");
       } else {
         next.set("tab", tab);
-      }
-      // Clear hot filter when switching to community — priority badges don't apply.
-      if (tab === "community") {
-        next.delete("hot");
       }
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -50,13 +35,9 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
   );
 
   const tabs: { key: FeedTab; label: string }[] = [
-    { key: "news", label: t("news") },
-    { key: "community", label: t("community") },
+    { key: "recent", label: t("recent") },
+    { key: "hot", label: t("hot") },
   ];
-
-  if (!COMMUNITY_TAB_ENABLED) {
-    return null;
-  }
 
   return (
     <nav

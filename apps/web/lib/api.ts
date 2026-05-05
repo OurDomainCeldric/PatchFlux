@@ -12,6 +12,8 @@ export interface NewsItem {
   language: "de" | "en";
   priority: 0 | 1 | 2;
   topics: string[];
+  helpfulVotes?: number;
+  hotScore?: number;
 }
 
 export interface NewsResponse {
@@ -130,6 +132,15 @@ export interface CommentCountsResponse {
   counts: Record<string, number>;
 }
 
+export interface VoteState {
+  count: number;
+  votedByMe: boolean;
+}
+
+export interface VotesResponse {
+  votes: Record<string, VoteState>;
+}
+
 export interface AdminCommentsResponse {
   comments: AdminCommentItem[];
   count: number;
@@ -157,6 +168,7 @@ export interface NewsFilters {
   hot?: boolean;
   topics?: string[];
   excludeTopics?: string[];
+  sort?: "hot";
   /** true = Community tab (tier 3 only); false = News & Blogs (tier 1+2 only) */
   community?: boolean;
 }
@@ -199,6 +211,7 @@ function buildNewsQuery(params: NewsFilters): URLSearchParams {
     search.set("topics", params.topics.join(","));
   if (params.excludeTopics && params.excludeTopics.length > 0)
     search.set("exclude_topics", params.excludeTopics.join(","));
+  if (params.sort) search.set("sort", params.sort);
   if (params.community !== undefined)
     search.set("community", params.community ? "1" : "0");
   return search;
@@ -285,6 +298,40 @@ export function fetchCommentCounts(newsItemIds: string[]): Promise<CommentCounts
     "/comments/counts",
     new URLSearchParams({ items: uniqueIds.join(",") }),
   );
+}
+
+export function fetchVotes(newsItemIds: string[], userId?: string): Promise<VotesResponse> {
+  const uniqueIds = Array.from(new Set(newsItemIds)).filter(Boolean);
+  if (uniqueIds.length === 0) {
+    return Promise.resolve({ votes: {} });
+  }
+  const search = new URLSearchParams({ items: uniqueIds.join(",") });
+  if (userId) search.set("userId", userId);
+  return request<VotesResponse>("/votes", search);
+}
+
+export async function toggleVote(input: {
+  newsItemId: string;
+  userId: string;
+  userSecret: string;
+}): Promise<{ newsItemId: string; count: number; votedByMe: boolean }> {
+  const response = await fetch(joinUrl("/votes", new URLSearchParams()), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Vote failed with ${response.status}`);
+  }
+  return (await response.json()) as {
+    newsItemId: string;
+    count: number;
+    votedByMe: boolean;
+  };
 }
 
 export async function createComment(input: CreateCommentInput): Promise<{

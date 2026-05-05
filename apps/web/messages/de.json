@@ -13,6 +13,8 @@
   },
   "tabs": {
     "ariaLabel": "Feed-Auswahl",
+    "recent": "Aktuelles",
+    "hot": "Heißeste",
     "news": "News & Blogs",
     "community": "Community",
     "communityTemporarilyDisabled": "Die Community-Sektion ist vorübergehend deaktiviert, während wir verlässliche Ersatzquellen für die bisher ausgefallenen Reddit-Feeds vorbereiten."
@@ -49,6 +51,7 @@
   },
   "news": {
     "empty": "Keine Meldungen passen zu den Filtern.",
+    "emptyHot": "Noch keine hilfreichen Meldungen im aktuellen Zeitraum. Markiere Artikel als hilfreich, damit dieser Tab lebendig wird.",
     "emptyWithFilters": "Keine Meldungen passen zu den aktuellen Filtern.",
     "activeFilters": "Aktive Filter: {filters}",
     "clearAll": "Alle Filter zurücksetzen",
@@ -67,6 +70,10 @@
     "hotToday": "Top-News",
     "hotTicker": "Ticker mit Top-News",
     "contentLanguage": "Sprache des Artikels"
+  },
+  "votes": {
+    "helpful": "Hilfreich",
+    "title": "Diesen Artikel als hilfreich markieren"
   },
   "comments": {
     "toggle": "Kommentare",
@@ -153,7 +160,7 @@
     "dpoHeading": "2. Datenschutzbeauftragter",
     "dpoBody": "Für den nicht-kommerziellen Privatbetrieb besteht keine gesetzliche Pflicht zur Bestellung eines Datenschutzbeauftragten (§ 38 BDSG). Anfragen werden direkt vom Verantwortlichen bearbeitet.",
     "dataHeading": "3. Welche Daten wir verarbeiten",
-    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Kommentare nutzen eine browser-lokale pseudonyme Identität im localStorage (zufällige Nutzer-ID und Secret). Wenn du kommentierst, speichert PatchFlux Anzeigenamen, Kommentartext, zugehörige Meldung, Zeitpunkte, Moderationsstatus und einen Hash des browser-lokalen Secrets. Das Kommentarsystem speichert keine E-Mail-Adresse, kein Passwort, keine IP-Adresse und keinen Geräte-Fingerprint. Zusätzlich speichert die Website einen rein aggregierten Besuchszähler (heute / gesamt), ohne IP-Adressen oder persönliche Profile zu speichern.",
+    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Kommentare und Hilfreich-Votes nutzen eine browser-lokale pseudonyme Identität im localStorage (zufällige Nutzer-ID und Secret). Wenn du kommentierst, speichert PatchFlux Anzeigenamen, Kommentartext, zugehörige Meldung, Zeitpunkte, Moderationsstatus und einen Hash des browser-lokalen Secrets. Wenn du einen Artikel als hilfreich markierst, speichert PatchFlux die zugehörige Meldung, die pseudonyme Nutzer-ID, den Vote-Status und Zeitpunkte. Das Kommentar- und Vote-System speichert keine E-Mail-Adresse, kein Passwort, keine IP-Adresse und keinen Geräte-Fingerprint. Zusätzlich speichert die Website einen rein aggregierten Besuchszähler (heute / gesamt), ohne IP-Adressen oder persönliche Profile zu speichern.",
     "legalBasisHeading": "4. Rechtsgrundlagen und Zwecke",
     "legalBasisBody": "Die Verarbeitung der oben genannten Zugriffsdaten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Das berechtigte Interesse liegt im zuverlässigen, sicheren und missbrauchsfreien Betrieb der Website sowie in der kurzfristigen Fehler- und Kapazitätsanalyse. Soweit beim Abruf der Seite Daten zur Vertragsanbahnung oder -erfüllung verarbeitet würden (z. B. bei zukünftigen Kontaktformularen), erfolgt dies auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO.",
     "retentionHeading": "5. Speicherdauer",

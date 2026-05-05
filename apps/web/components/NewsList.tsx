@@ -3,8 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { fetchCommentCounts, fetchNews, type NewsItem } from "@/lib/api";
+import {
+  fetchCommentCounts,
+  fetchNews,
+  fetchVotes,
+  type NewsItem,
+  type VoteState,
+} from "@/lib/api";
 import { CommentsPanel } from "@/components/CommentsPanel";
+import { HelpfulButton } from "@/components/HelpfulButton";
+import { readBrowserIdentity, type BrowserIdentity } from "@/lib/localIdentity";
 import {
   areAllNewsTopicsSelected,
   filtersToQuery,
@@ -37,7 +45,7 @@ export function NewsList({ pathname }: NewsListProps) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isCommunity = searchParams?.get("tab") === "community";
+  const isHottest = searchParams?.get("tab") === "hot";
 
   const filters = useMemo(
     () => readFiltersFromParams(searchParams ?? new URLSearchParams()),
@@ -46,6 +54,8 @@ export function NewsList({ pathname }: NewsListProps) {
 
   const [items, setItems] = useState<NewsItem[] | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [voteStates, setVoteStates] = useState<Record<string, VoteState>>({});
+  const [identity, setIdentity] = useState<BrowserIdentity | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -60,8 +70,8 @@ export function NewsList({ pathname }: NewsListProps) {
     if (filters.since) opts.since = filters.since;
     if (filters.q) opts.q = filters.q;
     if (filters.deduped) opts.deduped = true;
-    // Community tab never passes hot=true (priority not relevant for forum posts)
-    if (!isCommunity && filters.onlyHot) opts.hot = true;
+    if (filters.onlyHot) opts.hot = true;
+    if (isHottest) opts.sort = "hot";
     if (hasNoSelectedTopics) {
       opts.topics = [];
     } else if (isDefaultTopicSet(filters.topics)) {
@@ -70,9 +80,13 @@ export function NewsList({ pathname }: NewsListProps) {
       opts.topics = Array.from(filters.topics);
     }
     // Always pass community flag so the API applies the right tier filter
-    opts.community = isCommunity;
+    opts.community = false;
     return opts;
-  }, [filters, hasNoSelectedTopics, isCommunity]);
+  }, [filters, hasNoSelectedTopics, isHottest]);
+
+  useEffect(() => {
+    setIdentity(readBrowserIdentity());
+  }, []);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -112,6 +126,27 @@ export function NewsList({ pathname }: NewsListProps) {
       cancelled = true;
     };
   }, [items]);
+
+  useEffect(() => {
+    if (!items || items.length === 0) {
+      setVoteStates({});
+      return;
+    }
+    let cancelled = false;
+    fetchVotes(
+      items.map((item) => item.id),
+      identity?.userId,
+    )
+      .then((response) => {
+        if (!cancelled) setVoteStates(response.votes);
+      })
+      .catch(() => {
+        if (!cancelled) setVoteStates({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [identity?.userId, items]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -188,7 +223,7 @@ export function NewsList({ pathname }: NewsListProps) {
         className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
       >
         <p className="font-medium">
-          {hasActive ? t("news.emptyWithFilters") : t("news.empty")}
+          {isHottest ? t("news.emptyHot") : hasActive ? t("news.emptyWithFilters") : t("news.empty")}
         </p>
         {hasActive && (
           <>
@@ -220,15 +255,15 @@ export function NewsList({ pathname }: NewsListProps) {
       >
         {t("news.resultCount", { count: items.length })}
       </p>
-      {grouped.map(([dateLabel, bucket]) => (
+      {(isHottest ? [[t("tabs.hot"), items] as [string, NewsItem[]]] : grouped).map(([dateLabel, bucket]) => (
         <section key={dateLabel} className="mb-6">
           <h2 className="sticky top-16 z-10 -mx-4 mb-3 bg-[#f8fafc]/90 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 backdrop-blur-md dark:bg-[#09090b]/90 dark:text-slate-400">
             {dateLabel}
           </h2>
           <ul className="space-y-4">
             {bucket.map((item) => {
-              const hot = !isCommunity && item.priority >= 2;
-              const notable = !isCommunity && item.priority === 1;
+              const hot = item.priority >= 2;
+              const notable = item.priority === 1;
               return (
               <li
                 key={item.id}
@@ -299,7 +334,7 @@ export function NewsList({ pathname }: NewsListProps) {
                     ))}
                   </ul>
                 )}
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <a
                     href={item.url}
                     target="_blank"
@@ -311,6 +346,17 @@ export function NewsList({ pathname }: NewsListProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                   </a>
+                  <HelpfulButton
+                    item={item}
+                    identity={identity}
+                    state={voteStates[item.id]}
+                    onChange={(newsItemId, state) =>
+                      setVoteStates((previous) => ({
+                        ...previous,
+                        [newsItemId]: state,
+                      }))
+                    }
+                  />
                 </div>
                 {hot && <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />}
                 {notable && <div className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}

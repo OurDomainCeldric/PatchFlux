@@ -7,6 +7,7 @@ HTTP routes
 - ``GET  /api/products``   – distinct product IDs with occurrence counts
 - ``GET|POST /api/comments`` – comments for one news item
 - ``GET|POST /api/comments/*`` – Function-key protected moderation
+- ``GET|POST /api/votes`` – privacy-light helpful votes
 - ``GET  /api/feed.xml``   – RSS 2.0 export (headline + URL + source only)
 - ``GET  /api/atom.xml``   – Atom 1.0 export (headline + URL + source only)
 - ``GET  /api/health``     – lightweight liveness probe (status, storage,
@@ -70,6 +71,8 @@ COMMENT_BODY_MAX_CHARS = 1000
 COMMENT_DISPLAY_NAME_MAX_CHARS = 40
 COMMENT_MIN_SECONDS_BETWEEN_POSTS = 60
 COMMENT_MAX_PER_DAY = 20
+HOT_SCORE_WINDOW_DAYS = 7
+HOT_SCORE_SCAN_LIMIT = 500
 
 # Grouping used by both the timer triggers and ``?source=<id>`` on /ingest.
 HIGH_FREQ_SOURCES = {"msrc", "cisa-kev"}
@@ -145,6 +148,8 @@ def _store() -> NewsStore:
         comment_table=settings.comment_table_name,
         comment_moderation_table=settings.comment_moderation_table_name,
         comment_rate_limit_table=settings.comment_rate_limit_table_name,
+        article_vote_table=settings.article_vote_table_name,
+        article_user_vote_table=settings.article_user_vote_table_name,
     )
 
 
@@ -559,6 +564,20 @@ def _serialize_entity(ent: dict) -> dict:
     }
 
 
+def _hot_score(item: dict, helpful_votes: int, *, now: datetime | None = None) -> float:
+    if helpful_votes <= 0:
+        return 0.0
+    current = now or datetime.now(UTC)
+    try:
+        published = datetime.fromisoformat(str(item.get("publishedAt")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        published = current
+    if published.tzinfo is None:
+        published = published.replace(tzinfo=UTC)
+    age_hours = max(0.0, (current - published.astimezone(UTC)).total_seconds() / 3600)
+    return helpful_votes / ((age_hours + 2) ** 1.5)
+
+
 def _etag_for(payload: bytes) -> str:
     return '"' + hashlib.sha256(payload).hexdigest()[:24] + '"'
 
@@ -600,6 +619,8 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     since = _parse_since(req.params.get("since"))
     search = (req.params.get("q") or "").strip() or None
     deduped = _parse_bool(req.params.get("deduped"))
+    sort = (req.params.get("sort") or "").strip().lower()
+    hot_sort = sort == "hot"
     cursor = req.params.get("cursor") or None
     # community=1 → Tier-3 only; community=0 → Tier 1+2 only; absent → all
     community_raw = req.params.get("community")
@@ -631,6 +652,9 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
         or community_filter is not None
     )
     raw_limit = limit if not need_post_filter else min(limit * 10, 500)
+    if hot_sort:
+        raw_limit = HOT_SCORE_SCAN_LIMIT
+        since = since or (datetime.now(UTC) - timedelta(days=HOT_SCORE_WINDOW_DAYS))
     page = store.query_page(
         limit=raw_limit,
         source_id=source_id,
@@ -662,13 +686,27 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
         serialized = [
             i for i in serialized if topics_filter.intersection(i["topics"])
         ]
+    if hot_sort:
+        vote_counts = store.article_vote_counts(news_item_ids=[str(i["id"]) for i in serialized])
+        now = datetime.now(UTC)
+        for item in serialized:
+            helpful_votes = vote_counts.get(str(item["id"]), 0)
+            item["helpfulVotes"] = helpful_votes
+            item["hotScore"] = _hot_score(item, helpful_votes, now=now)
+        serialized = [i for i in serialized if int(i.get("helpfulVotes") or 0) > 0]
+        serialized.sort(
+            key=lambda i: (
+                -float(i.get("hotScore") or 0),
+                str(i.get("publishedAt") or ""),
+            )
+        )
     if len(serialized) > limit:
         serialized = serialized[:limit]
 
     payload = {
         "items": serialized,
         "count": len(serialized),
-        "nextCursor": page.next_cursor,
+        "nextCursor": None if hot_sort else page.next_cursor,
     }
 
     log.info(
@@ -680,6 +718,7 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
                 "lang": language,
                 "q": bool(search),
                 "deduped": deduped,
+                "sort": sort or "recent",
                 "limit": limit,
                 "count": len(page.items),
                 "has_cursor": cursor is not None,
@@ -957,6 +996,63 @@ def api_comment_counts(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response({"counts": {}}, cache_seconds=30)
     counts = _store().visible_comment_counts(news_item_ids=news_item_ids)
     return _json_response({"counts": counts}, cache_seconds=30)
+
+
+@app.function_name(name="api_votes")
+@app.route(route="votes", methods=["GET", "POST"])
+def api_votes(req: func.HttpRequest) -> func.HttpResponse:
+    store = _store()
+    if req.method == "GET":
+        raw_items = (req.params.get("items") or "").strip()
+        user_id = _clean_comment_text(req.params.get("userId"), max_chars=96)
+        news_item_ids = [
+            _clean_comment_text(item, max_chars=160)
+            for item in raw_items.split(",")
+            if item.strip()
+        ][:100]
+        counts = store.article_vote_counts(news_item_ids=news_item_ids)
+        voted = store.article_user_votes(news_item_ids=news_item_ids, user_id=user_id)
+        return _json_response(
+            {
+                "votes": {
+                    item_id: {
+                        "count": counts.get(item_id, 0),
+                        "votedByMe": item_id in voted,
+                    }
+                    for item_id in news_item_ids
+                }
+            },
+            cache_seconds=0,
+            extra_headers={"Cache-Control": "no-store"},
+        )
+
+    data = _request_json(req)
+    news_item_id = _clean_comment_text(data.get("newsItemId"), max_chars=160)
+    user_id = _clean_comment_text(data.get("userId"), max_chars=96)
+    user_secret = _clean_comment_text(data.get("userSecret"), max_chars=160)
+    if not news_item_id:
+        return _json_response({"error": "missing_item"}, status_code=400)
+    if not _COMMENT_ID_PATTERN.match(user_id) or not _COMMENT_ID_PATTERN.match(user_secret):
+        return _json_response({"error": "invalid_user_identity"}, status_code=400)
+
+    secret_hash = _comment_secret_hash(user_id, user_secret)
+    user = store.get_comment_user(user_id)
+    if user is not None and not _constant_time_equal(user.get("SecretHash"), secret_hash):
+        return _json_response({"error": "invalid_user_identity"}, status_code=403)
+    if user is not None and str(user.get("Status") or "active") in {"muted", "banned"}:
+        return _json_response({"error": "user_not_allowed"}, status_code=403)
+    if user is None:
+        store.upsert_comment_user(user_id=user_id, display_name="", secret_hash=secret_hash)
+    result = store.toggle_article_vote(news_item_id=news_item_id, user_id=user_id)
+    return _json_response(
+        {
+            "newsItemId": news_item_id,
+            "count": result["count"],
+            "votedByMe": result["voted"],
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.function_name(name="api_comments_moderation")

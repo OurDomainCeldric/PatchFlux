@@ -107,6 +107,8 @@ class NewsStore:
     comment_table: str = "Comments"
     comment_moderation_table: str = "CommentModeration"
     comment_rate_limit_table: str = "CommentRateLimits"
+    article_vote_table: str = "ArticleVotes"
+    article_user_vote_table: str = "ArticleUserVotes"
 
     def _service(self) -> TableServiceClient:
         return TableServiceClient.from_connection_string(self.connection_string)
@@ -121,6 +123,8 @@ class NewsStore:
             self.comment_table,
             self.comment_moderation_table,
             self.comment_rate_limit_table,
+            self.article_vote_table,
+            self.article_user_vote_table,
         ):
             try:
                 svc.create_table(name)
@@ -151,6 +155,14 @@ class NewsStore:
     def _comment_rate_limit_client(self) -> TableClient:
         return TableClient.from_connection_string(
             self.connection_string, self.comment_rate_limit_table
+        )
+
+    def _article_vote_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.article_vote_table)
+
+    def _article_user_vote_client(self) -> TableClient:
+        return TableClient.from_connection_string(
+            self.connection_string, self.article_user_vote_table
         )
 
     # ---- NewsItems ------------------------------------------------------
@@ -713,3 +725,76 @@ class NewsStore:
                         partition_key=str(ent.get("PartitionKey")),
                         row_key=str(ent.get("RowKey")),
                     )
+
+    # ---- ArticleVotes ---------------------------------------------------
+
+    def article_vote_counts(self, *, news_item_ids: Iterable[str]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        with self._article_vote_client() as client:
+            for news_item_id in news_item_ids:
+                try:
+                    entity = client.get_entity(partition_key="votes", row_key=news_item_id)
+                    counts[news_item_id] = int(entity.get("HelpfulCount") or 0)
+                except ResourceNotFoundError:
+                    counts[news_item_id] = 0
+        return counts
+
+    def article_user_votes(self, *, news_item_ids: Iterable[str], user_id: str) -> set[str]:
+        voted: set[str] = set()
+        if not user_id:
+            return voted
+        with self._article_user_vote_client() as client:
+            for news_item_id in news_item_ids:
+                try:
+                    entity = client.get_entity(
+                        partition_key=f"article:{news_item_id}",
+                        row_key=user_id,
+                    )
+                except ResourceNotFoundError:
+                    continue
+                if str(entity.get("Status") or "") == "active":
+                    voted.add(news_item_id)
+        return voted
+
+    def toggle_article_vote(self, *, news_item_id: str, user_id: str) -> dict:
+        now = datetime.now(UTC)
+        with self._article_user_vote_client() as user_client:
+            try:
+                user_vote = user_client.get_entity(
+                    partition_key=f"article:{news_item_id}",
+                    row_key=user_id,
+                )
+                was_active = str(user_vote.get("Status") or "") == "active"
+            except ResourceNotFoundError:
+                user_vote = {
+                    "PartitionKey": f"article:{news_item_id}",
+                    "RowKey": user_id,
+                    "UserId": user_id,
+                    "NewsItemId": news_item_id,
+                    "CreatedAt": now,
+                }
+                was_active = False
+            next_active = not was_active
+            user_vote["Status"] = "active" if next_active else "inactive"
+            user_vote["UpdatedAt"] = now
+            user_client.upsert_entity(user_vote, mode=UpdateMode.MERGE)
+
+        with self._article_vote_client() as vote_client:
+            try:
+                aggregate = vote_client.get_entity(partition_key="votes", row_key=news_item_id)
+                count = int(aggregate.get("HelpfulCount") or 0)
+            except ResourceNotFoundError:
+                aggregate = {
+                    "PartitionKey": "votes",
+                    "RowKey": news_item_id,
+                    "HelpfulCount": 0,
+                    "CreatedAt": now,
+                }
+                count = 0
+            count = count + 1 if next_active else max(0, count - 1)
+            aggregate["HelpfulCount"] = count
+            aggregate["UpdatedAt"] = now
+            if next_active:
+                aggregate["LastVotedAt"] = now
+            vote_client.upsert_entity(aggregate, mode=UpdateMode.MERGE)
+        return {"count": count, "voted": next_active}
