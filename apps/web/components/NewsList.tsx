@@ -334,7 +334,7 @@ export function NewsList({ pathname }: NewsListProps) {
                     ))}
                   </ul>
                 )}
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="mt-4">
                   <a
                     href={item.url}
                     target="_blank"
@@ -346,17 +346,6 @@ export function NewsList({ pathname }: NewsListProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                   </a>
-                  <HelpfulButton
-                    item={item}
-                    identity={identity}
-                    state={voteStates[item.id]}
-                    onChange={(newsItemId, state) =>
-                      setVoteStates((previous) => ({
-                        ...previous,
-                        [newsItemId]: state,
-                      }))
-                    }
-                  />
                 </div>
                 {hot && <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />}
                 {notable && <div className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}
@@ -368,6 +357,19 @@ export function NewsList({ pathname }: NewsListProps) {
                       ...previous,
                       [newsItemId]: count,
                     }))
+                  }
+                  actionSlot={
+                    <HelpfulButton
+                      item={item}
+                      identity={identity}
+                      state={voteStates[item.id]}
+                      onChange={(newsItemId, state) =>
+                        setVoteStates((previous) => ({
+                          ...previous,
+                          [newsItemId]: state,
+                        }))
+                      }
+                    />
                   }
                 />
               </li>

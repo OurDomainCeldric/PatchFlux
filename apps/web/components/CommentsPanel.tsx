@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   createComment,
@@ -19,6 +19,7 @@ interface CommentsPanelProps {
   item: NewsItem;
   initialCount?: number;
   onCountChange?: (newsItemId: string, count: number) => void;
+  actionSlot?: ReactNode;
 }
 
 function errorLabel(error: string, t: ReturnType<typeof useTranslations>) {
@@ -43,7 +44,7 @@ function errorLabel(error: string, t: ReturnType<typeof useTranslations>) {
   }
 }
 
-export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPanelProps) {
+export function CommentsPanel({ item, initialCount, onCountChange, actionSlot }: CommentsPanelProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -116,14 +117,17 @@ export function CommentsPanel({ item, initialCount, onCountChange }: CommentsPan
 
   return (
     <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-slate-400 dark:hover:text-indigo-300"
-        aria-expanded={open}
-      >
-        {open ? t("comments.hide") : countLabel}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {actionSlot}
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-indigo-300"
+          aria-expanded={open}
+        >
+          {open ? t("comments.hide") : countLabel}
+        </button>
+      </div>
 
       {open && (
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">

@@ -48,14 +48,16 @@ export function HelpfulButton({ item, identity, state, onChange }: HelpfulButton
       disabled={!identity || busy}
       aria-pressed={voted}
       className={
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors disabled:opacity-50 " +
+        "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wide shadow-sm transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 " +
         (voted
-          ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-          : "border-slate-200 bg-slate-50 text-slate-500 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400")
+          ? "border-orange-300 bg-orange-100 text-orange-800 shadow-orange-100 hover:bg-orange-200 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-200 dark:shadow-none"
+          : "border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 hover:border-orange-300 hover:from-orange-100 hover:to-amber-100 dark:border-orange-900/70 dark:from-orange-950/40 dark:to-amber-950/30 dark:text-orange-300")
       }
       title={t("title")}
     >
-      <span aria-hidden="true">▲</span>
+      <span aria-hidden="true" className="rounded-full bg-orange-600 px-1.5 py-0.5 text-[9px] text-white">
+        HOT
+      </span>
       <span>{t("helpful")}</span>
       <span className="tabular-nums">{count}</span>
     </button>

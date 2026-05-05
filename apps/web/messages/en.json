@@ -14,7 +14,7 @@
   "tabs": {
     "ariaLabel": "Feed type",
     "recent": "Latest",
-    "hot": "Hottest",
+    "hot": "Hot News",
     "news": "News & Blogs",
     "community": "Community",
     "communityTemporarilyDisabled": "The community section is temporarily disabled while we prepare reliable replacement sources for the failed Reddit feeds."
