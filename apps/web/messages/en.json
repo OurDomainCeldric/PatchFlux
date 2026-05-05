@@ -92,6 +92,7 @@
   "footer": {
     "disclaimer": "PatchFlux is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
     "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
+    "visitCounter": "Visits today: {today} · all time: {allTime}",
     "imprint": "Imprint",
     "privacy": "Privacy",
     "rss": "RSS",
@@ -129,7 +130,7 @@
     "dpoHeading": "2. Data Protection Officer",
     "dpoBody": "A DPO is not required for this non-commercial private operation (§ 38 BDSG, Germany). Requests are handled directly by the controller.",
     "dataHeading": "3. What data we process",
-    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. No registration is offered; no personal form data is processed.",
+    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. No registration is offered; no personal form data is processed. In addition, the site stores a purely aggregate visit counter (today / all time) without saving IP addresses, account identifiers, or personal profiles.",
     "legalBasisHeading": "4. Legal bases and purposes",
     "legalBasisBody": "The access data above is processed on the basis of Art. 6 (1) (f) GDPR (legitimate interests). The legitimate interest lies in the reliable, secure and abuse-free operation of the website and in short-term error and capacity analysis. Should future features process data for the performance of a contract (e.g. contact forms), the legal basis is Art. 6 (1) (b) GDPR.",
     "retentionHeading": "5. Retention",

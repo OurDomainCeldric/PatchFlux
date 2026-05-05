@@ -96,6 +96,13 @@ export interface IngestResponse {
   written: Record<string, number>;
 }
 
+export interface VisitCountsResponse {
+  today: number;
+  allTime: number;
+  dayKey: string;
+  timezone: string;
+}
+
 export interface NewsFilters {
   source?: string;
   product?: string;
@@ -204,4 +211,19 @@ export async function triggerIngest(
     throw new Error(`Ingest trigger failed with ${response.status}`);
   }
   return (await response.json()) as IngestResponse;
+}
+
+export function fetchVisitCounts(): Promise<VisitCountsResponse> {
+  return request<VisitCountsResponse>("/visits", new URLSearchParams());
+}
+
+export async function trackVisit(): Promise<VisitCountsResponse> {
+  const response = await fetch(joinUrl("/visits/track", new URLSearchParams()), {
+    method: "POST",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`Visit tracking failed with ${response.status}`);
+  }
+  return (await response.json()) as VisitCountsResponse;
 }

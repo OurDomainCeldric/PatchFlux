@@ -120,6 +120,7 @@ def _store() -> NewsStore:
         connection_string=settings.table_connection,
         news_table=settings.news_table_name,
         source_health_table=settings.source_health_table_name,
+        visit_counter_table=settings.visit_counter_table_name,
     )
 
 
@@ -449,6 +450,11 @@ def _iso(value: object) -> object:
     return value
 
 
+def _visit_day_key(now: datetime | None = None) -> str:
+    current = now or datetime.now(UTC)
+    return current.astimezone(UTC).date().isoformat()
+
+
 def _serialize_entity(ent: dict) -> dict:
     title = ent.get("Title") or ""
     source_id = ent.get("SourceId") or ""
@@ -736,6 +742,39 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
     }
     status_code = 200 if storage_ok else 503
     return _json_response(body, status_code=status_code, cache_seconds=30)
+
+
+@app.function_name(name="api_visits")
+@app.route(route="visits", methods=["GET"])
+def api_visits(req: func.HttpRequest) -> func.HttpResponse:
+    day_key = _visit_day_key()
+    counts = _store().get_visit_counts(day_key=day_key)
+    return _json_response(
+        {
+            "today": counts["today"],
+            "allTime": counts["allTime"],
+            "dayKey": day_key,
+            "timezone": "UTC",
+        },
+        cache_seconds=60,
+    )
+
+
+@app.function_name(name="api_visits_track")
+@app.route(route="visits/track", methods=["POST"])
+def api_visits_track(req: func.HttpRequest) -> func.HttpResponse:
+    day_key = _visit_day_key()
+    counts = _store().record_visit(day_key=day_key)
+    return _json_response(
+        {
+            "today": counts["today"],
+            "allTime": counts["allTime"],
+            "dayKey": day_key,
+            "timezone": "UTC",
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
 
 
 # ---- HTTP: RSS / Atom feeds -------------------------------------------------

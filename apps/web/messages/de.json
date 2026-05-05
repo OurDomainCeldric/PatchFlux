@@ -92,6 +92,7 @@
   "footer": {
     "disclaimer": "PatchFlux ist ein unabhängiges Drittanbieter-Tool. Nicht verbunden mit, unterstützt von oder in irgendeiner Weise offiziell verknüpft mit Microsoft, Heise, Borns IT-Blog oder anderen genannten Verlagen. Alle Markenzeichen gehören ihren jeweiligen Inhabern.",
     "legalNotice": "Es werden ausschließlich Metadaten (Überschrift, Datum, Quelle, Link) gespeichert. Jede Meldung verlinkt auf den Originalartikel beim jeweiligen Verlag.",
+    "visitCounter": "Besuche heute: {today} · gesamt: {allTime}",
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "rss": "RSS",
@@ -129,7 +130,7 @@
     "dpoHeading": "2. Datenschutzbeauftragter",
     "dpoBody": "Für den nicht-kommerziellen Privatbetrieb besteht keine gesetzliche Pflicht zur Bestellung eines Datenschutzbeauftragten (§ 38 BDSG). Anfragen werden direkt vom Verantwortlichen bearbeitet.",
     "dataHeading": "3. Welche Daten wir verarbeiten",
-    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Es wird keine Registrierung angeboten; es werden keine personenbezogenen Formulardaten verarbeitet.",
+    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Es wird keine Registrierung angeboten; es werden keine personenbezogenen Formulardaten verarbeitet. Zusätzlich speichert die Website einen rein aggregierten Besuchszähler (heute / gesamt), ohne IP-Adressen, Konto-IDs oder persönliche Profile zu speichern.",
     "legalBasisHeading": "4. Rechtsgrundlagen und Zwecke",
     "legalBasisBody": "Die Verarbeitung der oben genannten Zugriffsdaten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Das berechtigte Interesse liegt im zuverlässigen, sicheren und missbrauchsfreien Betrieb der Website sowie in der kurzfristigen Fehler- und Kapazitätsanalyse. Soweit beim Abruf der Seite Daten zur Vertragsanbahnung oder -erfüllung verarbeitet würden (z. B. bei zukünftigen Kontaktformularen), erfolgt dies auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO.",
     "retentionHeading": "5. Speicherdauer",

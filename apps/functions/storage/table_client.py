@@ -19,7 +19,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from azure.core.exceptions import ResourceExistsError
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import TableClient, TableServiceClient, UpdateMode
 
 from models.news_item import NewsItem
@@ -101,13 +101,14 @@ class NewsStore:
     connection_string: str
     news_table: str = "NewsItems"
     source_health_table: str = "SourceHealth"
+    visit_counter_table: str = "VisitCounters"
 
     def _service(self) -> TableServiceClient:
         return TableServiceClient.from_connection_string(self.connection_string)
 
     def ensure_tables(self) -> None:
         svc = self._service()
-        for name in (self.news_table, self.source_health_table):
+        for name in (self.news_table, self.source_health_table, self.visit_counter_table):
             try:
                 svc.create_table(name)
                 log.info("Created table %s", name)
@@ -119,6 +120,9 @@ class NewsStore:
 
     def _health_client(self) -> TableClient:
         return TableClient.from_connection_string(self.connection_string, self.source_health_table)
+
+    def _visit_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.visit_counter_table)
 
     # ---- NewsItems ------------------------------------------------------
 
@@ -377,3 +381,46 @@ class NewsStore:
     def list_source_health(self) -> Iterator[dict]:
         with self._health_client() as client:
             yield from client.query_entities("PartitionKey eq 'sources'")
+
+    # ---- VisitCounters --------------------------------------------------
+
+    def _counter_key(self, day_key: str | None = None) -> str:
+        return "total" if day_key is None else f"day:{day_key}"
+
+    def _read_counter(self, row_key: str) -> int:
+        with self._visit_client() as client:
+            try:
+                entity = client.get_entity(partition_key="visits", row_key=row_key)
+            except ResourceNotFoundError:
+                return 0
+        return int(entity.get("Count") or 0)
+
+    def get_visit_counts(self, *, day_key: str) -> dict[str, int]:
+        return {
+            "today": self._read_counter(self._counter_key(day_key)),
+            "allTime": self._read_counter(self._counter_key()),
+        }
+
+    def _increment_counter(self, row_key: str) -> int:
+        with self._visit_client() as client:
+            try:
+                entity = client.get_entity(partition_key="visits", row_key=row_key)
+                count = int(entity.get("Count") or 0) + 1
+            except ResourceNotFoundError:
+                count = 1
+            client.upsert_entity(
+                {
+                    "PartitionKey": "visits",
+                    "RowKey": row_key,
+                    "Count": count,
+                    "UpdatedAt": datetime.now(UTC),
+                },
+                mode=UpdateMode.MERGE,
+            )
+        return count
+
+    def record_visit(self, *, day_key: str) -> dict[str, int]:
+        return {
+            "today": self._increment_counter(self._counter_key(day_key)),
+            "allTime": self._increment_counter(self._counter_key()),
+        }

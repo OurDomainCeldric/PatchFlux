@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { VisitCounter } from "@/components/VisitCounter";
 
 export async function SiteFooter() {
   const t = await getTranslations();
@@ -14,6 +15,7 @@ export async function SiteFooter() {
       <div className="mx-auto w-full max-w-5xl space-y-3 px-4 py-6 text-xs text-zinc-600 dark:text-zinc-400">
         <p>{t("footer.disclaimer")}</p>
         <p>{t("footer.legalNotice")}</p>
+        <VisitCounter />
         <nav className="flex flex-wrap gap-4" aria-label="Legal">
           <Link href={`/${locale}`} className="hover:underline">
             {t("nav.news")}

@@ -10,6 +10,7 @@ class Settings:
     table_connection: str
     news_table_name: str
     source_health_table_name: str
+    visit_counter_table_name: str
     ai_budget_table_name: str
     user_agent: str
     # --- AI relevance gate (all optional; off by default) --------------------
@@ -61,6 +62,7 @@ def get_settings() -> Settings:
         table_connection=os.environ.get("NEWS_TABLE_CONNECTION", "UseDevelopmentStorage=true"),
         news_table_name=os.environ.get("NEWS_TABLE_NAME", "NewsItems"),
         source_health_table_name=os.environ.get("SOURCE_HEALTH_TABLE_NAME", "SourceHealth"),
+        visit_counter_table_name=os.environ.get("VISIT_COUNTER_TABLE_NAME", "VisitCounters"),
         ai_budget_table_name=os.environ.get("AI_BUDGET_TABLE_NAME", "AiBudget"),
         user_agent=os.environ.get(
             "USER_AGENT",
