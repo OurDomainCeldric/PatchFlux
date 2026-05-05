@@ -5,6 +5,9 @@ HTTP routes
 - ``GET  /api/news``       – filtered & paginated news feed
 - ``GET  /api/sources``    – source-health status list
 - ``GET  /api/products``   – distinct product IDs with occurrence counts
+- ``GET|POST /api/comments`` – comments for one news item
+- ``GET|POST /api/comments/*`` – Function-key protected moderation
+- ``GET|POST /api/votes`` – privacy-light helpful votes
 - ``GET  /api/feed.xml``   – RSS 2.0 export (headline + URL + source only)
 - ``GET  /api/atom.xml``   – Atom 1.0 export (headline + URL + source only)
 - ``GET  /api/health``     – lightweight liveness probe (status, storage,
@@ -21,11 +24,13 @@ Timer triggers
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import re
 import time
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from xml.sax.saxutils import escape as xml_escape
 
@@ -62,6 +67,12 @@ log = logging.getLogger(__name__)
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 INTER_SOURCE_DELAY_SECONDS = 1.0
+COMMENT_BODY_MAX_CHARS = 1000
+COMMENT_DISPLAY_NAME_MAX_CHARS = 40
+COMMENT_MIN_SECONDS_BETWEEN_POSTS = 60
+COMMENT_MAX_PER_DAY = 20
+HOT_SCORE_WINDOW_DAYS = 7
+HOT_SCORE_SCAN_LIMIT = 500
 
 # Grouping used by both the timer triggers and ``?source=<id>`` on /ingest.
 HIGH_FREQ_SOURCES = {"msrc", "cisa-kev"}
@@ -80,10 +91,12 @@ MID_FREQ_SOURCES = {
     "reddit-microsoft",
 }
 LOW_FREQ_SOURCES = {"m365-roadmap", "azure-updates"}
+DISABLED_SOURCE_IDS = {"reddit-sysadmin", "reddit-microsoft"}
 
 # If a source has not been fetched successfully within this window, /health
 # reports it as stale.
 STALE_WINDOW = timedelta(hours=26)
+HEALTHY_SOURCE_STATUSES = {"ok", "not_modified"}
 
 # Adapter error messages often embed absolute file paths, IP addresses,
 # Python-package internals and line numbers; none of that is useful to the
@@ -92,6 +105,19 @@ _ERROR_PATH_PATTERN = re.compile(
     r"(/[^\s'\"]*\.py[^\s'\"]*|[A-Za-z]:\\[^\s'\"]+|line\s+\d+|File\s+\"[^\"]+\")",
     re.IGNORECASE,
 )
+_COMMENT_URL_PATTERN = re.compile(
+    r"(?i)(https?://|www\.|[a-z0-9][a-z0-9-]{1,62}\.(?:com|net|org|de|io|dev|app|info|biz|ru|cn|uk|eu)\b)"
+)
+_COMMENT_BLOCKED_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bheil\s+hitler\b",
+        r"\bwhite\s+power\b",
+        r"\bkkk\b",
+        r"\bnazi\s+(?:propaganda|salute|symbol)\b",
+    )
+]
+_COMMENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,96}$")
 
 
 def _safe_error_summary(exc: BaseException | str | None, *, limit: int = 120) -> str | None:
@@ -117,7 +143,18 @@ def _store() -> NewsStore:
         connection_string=settings.table_connection,
         news_table=settings.news_table_name,
         source_health_table=settings.source_health_table_name,
+        visit_counter_table=settings.visit_counter_table_name,
+        comment_user_table=settings.comment_user_table_name,
+        comment_table=settings.comment_table_name,
+        comment_moderation_table=settings.comment_moderation_table_name,
+        comment_rate_limit_table=settings.comment_rate_limit_table_name,
+        article_vote_table=settings.article_vote_table_name,
+        article_user_vote_table=settings.article_user_vote_table_name,
     )
+
+
+def _is_enabled_source_id(source_id: str) -> bool:
+    return source_id not in DISABLED_SOURCE_IDS
 
 
 # Create tables on cold start so read-only endpoints don't 500 before the
@@ -128,8 +165,8 @@ except Exception:  # noqa: BLE001 — logged by Application Insights via logger
     log.exception("Failed to ensure tables during cold start")
 
 
-def _all_adapters() -> list[SourceAdapter]:
-    return [
+def _configured_adapters() -> list[SourceAdapter]:
+    adapters = [
         M365RoadmapAdapter(),
         AzureUpdatesAdapter(),
         MSRCAdapter(),
@@ -147,11 +184,103 @@ def _all_adapters() -> list[SourceAdapter]:
         RedditSysadminAdapter(),
         RedditMicrosoftAdapter(),
     ]
+    return adapters
+
+
+def _all_adapters() -> list[SourceAdapter]:
+    adapters = _configured_adapters()
+    return [adapter for adapter in adapters if _is_enabled_source_id(adapter.source_id)]
 
 
 def _adapters_matching(ids: Iterable[str]) -> list[SourceAdapter]:
     wanted = set(ids)
     return [a for a in _all_adapters() if a.source_id in wanted]
+
+
+@dataclass(frozen=True)
+class SourceHealthView:
+    source_id: str
+    source_name: str
+    state: str
+    last_status: str | None
+    last_error: str | None
+    last_attempt_at: str | None
+    last_fetch_at: str | None
+    last_success_at: str | None
+    items_last_run: int
+
+
+def _as_utc_datetime(value: object) -> datetime | None:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _classify_source_state(
+    *,
+    source_id: str,
+    last_status: str | None,
+    last_attempt_at: datetime | None,
+    last_success_at: datetime | None,
+    now: datetime,
+) -> str:
+    if not _is_enabled_source_id(source_id):
+        return "disabled"
+    if last_attempt_at is None and last_success_at is None:
+        return "never"
+    if last_attempt_at is None or (now - last_attempt_at) > STALE_WINDOW:
+        return "timer_not_firing"
+    if last_status == "error":
+        return "error"
+    if last_success_at is None or (now - last_success_at) > STALE_WINDOW:
+        return "stale"
+    if last_status == "not_modified":
+        return "not_modified"
+    return "ok"
+
+
+def _source_catalog() -> dict[str, str]:
+    return {adapter.source_id: adapter.source_name for adapter in _configured_adapters()}
+
+
+def _list_source_health_views() -> list[SourceHealthView]:
+    now = datetime.now(UTC)
+    store = _store()
+    catalog = _source_catalog()
+    rows_by_id = {
+        str(ent.get("RowKey") or ""): ent for ent in store.list_source_health() if ent.get("RowKey")
+    }
+    source_ids = sorted(set(catalog) | set(DISABLED_SOURCE_IDS) | set(rows_by_id))
+    views: list[SourceHealthView] = []
+    for source_id in source_ids:
+        ent = rows_by_id.get(source_id, {})
+        last_status = str(ent.get("LastStatus") or "") or None
+        last_fetch_at = _as_utc_datetime(ent.get("LastFetchAt"))
+        last_attempt_at = _as_utc_datetime(ent.get("LastAttemptAt")) or last_fetch_at
+        last_success_at = _as_utc_datetime(ent.get("LastSuccessAt")) or last_fetch_at
+        state = _classify_source_state(
+            source_id=source_id,
+            last_status=last_status,
+            last_attempt_at=last_attempt_at,
+            last_success_at=last_success_at,
+            now=now,
+        )
+        views.append(
+            SourceHealthView(
+                source_id=source_id,
+                source_name=catalog.get(source_id, source_id),
+                state=state,
+                last_status=last_status,
+                last_error=_safe_error_summary(ent.get("LastError") or None),
+                last_attempt_at=last_attempt_at.isoformat() if last_attempt_at else None,
+                last_fetch_at=last_fetch_at.isoformat() if last_fetch_at else None,
+                last_success_at=last_success_at.isoformat() if last_success_at else None,
+                items_last_run=int(ent.get("ItemsLastRun") or 0),
+            )
+        )
+    return views
 
 
 def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
@@ -298,6 +427,11 @@ def ingest_http(req: func.HttpRequest) -> func.HttpResponse:
     * ``source=<id>`` – optional; run only the named adapter.
     """
     source_param = req.params.get("source")
+    if source_param and not _is_enabled_source_id(source_param):
+        return _json_response(
+            {"error": "source_disabled", "sourceId": source_param},
+            status_code=400,
+        )
     requested = {source_param} if source_param else None
     log.info("ingest_http triggered source=%s", source_param or "<all>")
     result = _run_ingest(requested)
@@ -345,6 +479,71 @@ def _iso(value: object) -> object:
     return value
 
 
+def _visit_day_key(now: datetime | None = None) -> str:
+    current = now or datetime.now(UTC)
+    return current.astimezone(UTC).date().isoformat()
+
+
+def _comment_secret_hash(user_id: str, secret: str) -> str:
+    # The browser-local secret is high entropy; hashing avoids storing it in clear text.
+    return hashlib.sha256(f"{user_id}:{secret}".encode("utf-8")).hexdigest()
+
+
+def _constant_time_equal(left: object, right: str) -> bool:
+    return hmac.compare_digest(str(left or ""), right)
+
+
+def _clean_comment_text(value: object, *, max_chars: int) -> str:
+    text = str(value or "")
+    text = " ".join(text.replace("\r", "\n").split())
+    return text[:max_chars].strip()
+
+
+def _comment_validation_error(display_name: str, body: str) -> str | None:
+    if not display_name:
+        return "display_name_required"
+    if not body:
+        return "body_required"
+    if len(body) > COMMENT_BODY_MAX_CHARS:
+        return "body_too_long"
+    if _COMMENT_URL_PATTERN.search(body):
+        return "links_not_allowed"
+    if any(pattern.search(body) for pattern in _COMMENT_BLOCKED_PATTERNS):
+        return "blocked_language"
+    return None
+
+
+def _request_json(req: func.HttpRequest) -> dict:
+    try:
+        data = req.get_json()
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _serialize_comment(ent: dict, *, admin: bool = False) -> dict:
+    payload = {
+        "id": ent.get("CommentId"),
+        "newsItemId": ent.get("NewsItemId"),
+        "displayName": ent.get("DisplayName"),
+        "body": ent.get("Body"),
+        "status": ent.get("Status"),
+        "createdAt": _iso(ent.get("CreatedAt")),
+        "updatedAt": _iso(ent.get("UpdatedAt")),
+    }
+    if admin:
+        payload.update(
+            {
+                "userId": ent.get("UserId"),
+                "commentPartitionKey": ent.get("PartitionKey"),
+                "commentRowKey": ent.get("RowKey"),
+                "moderationReason": ent.get("ModerationReason") or None,
+                "reportCount": int(ent.get("ReportCount") or 0),
+            }
+        )
+    return payload
+
+
 def _serialize_entity(ent: dict) -> dict:
     title = ent.get("Title") or ""
     source_id = ent.get("SourceId") or ""
@@ -363,6 +562,20 @@ def _serialize_entity(ent: dict) -> dict:
         "priority": compute_priority(title, source_id),
         "topics": list(compute_topics(title, source_id)),
     }
+
+
+def _hot_score(item: dict, helpful_votes: int, *, now: datetime | None = None) -> float:
+    if helpful_votes <= 0:
+        return 0.0
+    current = now or datetime.now(UTC)
+    try:
+        published = datetime.fromisoformat(str(item.get("publishedAt")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        published = current
+    if published.tzinfo is None:
+        published = published.replace(tzinfo=UTC)
+    age_hours = max(0.0, (current - published.astimezone(UTC)).total_seconds() / 3600)
+    return helpful_votes / ((age_hours + 2) ** 1.5)
 
 
 def _etag_for(payload: bytes) -> str:
@@ -406,6 +619,8 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     since = _parse_since(req.params.get("since"))
     search = (req.params.get("q") or "").strip() or None
     deduped = _parse_bool(req.params.get("deduped"))
+    sort = (req.params.get("sort") or "").strip().lower()
+    hot_sort = sort == "hot"
     cursor = req.params.get("cursor") or None
     # community=1 → Tier-3 only; community=0 → Tier 1+2 only; absent → all
     community_raw = req.params.get("community")
@@ -421,13 +636,25 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     topics_filter: set[str] = {
         t.strip().lower() for t in topics_param.split(",") if t.strip()
     }
+    exclude_topics_param = (req.params.get("exclude_topics") or "").strip()
+    exclude_topics_filter: set[str] = {
+        t.strip().lower() for t in exclude_topics_param.split(",") if t.strip()
+    }
 
     store = _store()
     start = time.monotonic()
     # When filtering by priority, topics, or tier we need to scan more raw rows
     # because all three filters are applied post-query.
-    need_post_filter = min_priority > 0 or bool(topics_filter) or community_filter is not None
+    need_post_filter = (
+        min_priority > 0
+        or bool(topics_filter)
+        or bool(exclude_topics_filter)
+        or community_filter is not None
+    )
     raw_limit = limit if not need_post_filter else min(limit * 10, 500)
+    if hot_sort:
+        raw_limit = HOT_SCORE_SCAN_LIMIT
+        since = since or (datetime.now(UTC) - timedelta(days=HOT_SCORE_WINDOW_DAYS))
     page = store.query_page(
         limit=raw_limit,
         source_id=source_id,
@@ -441,6 +668,7 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
     duration_ms = int((time.monotonic() - start) * 1000)
 
     serialized = [_serialize_entity(e) for e in page.items]
+    serialized = [i for i in serialized if _is_enabled_source_id(str(i["sourceId"]))]
     if community_filter is not None:
         if community_filter == 3:
             serialized = [i for i in serialized if i["sourceTier"] == 3]
@@ -448,17 +676,37 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
             serialized = [i for i in serialized if i["sourceTier"] <= 2]
     if min_priority > 0:
         serialized = [i for i in serialized if i["priority"] >= min_priority]
+    if exclude_topics_filter:
+        serialized = [
+            i
+            for i in serialized
+            if not exclude_topics_filter.intersection(str(topic).lower() for topic in i["topics"])
+        ]
     if topics_filter:
         serialized = [
             i for i in serialized if topics_filter.intersection(i["topics"])
         ]
+    if hot_sort:
+        vote_counts = store.article_vote_counts(news_item_ids=[str(i["id"]) for i in serialized])
+        now = datetime.now(UTC)
+        for item in serialized:
+            helpful_votes = vote_counts.get(str(item["id"]), 0)
+            item["helpfulVotes"] = helpful_votes
+            item["hotScore"] = _hot_score(item, helpful_votes, now=now)
+        serialized = [i for i in serialized if int(i.get("helpfulVotes") or 0) > 0]
+        serialized.sort(
+            key=lambda i: (
+                -float(i.get("hotScore") or 0),
+                str(i.get("publishedAt") or ""),
+            )
+        )
     if len(serialized) > limit:
         serialized = serialized[:limit]
 
     payload = {
         "items": serialized,
         "count": len(serialized),
-        "nextCursor": page.next_cursor,
+        "nextCursor": None if hot_sort else page.next_cursor,
     }
 
     log.info(
@@ -470,6 +718,7 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
                 "lang": language,
                 "q": bool(search),
                 "deduped": deduped,
+                "sort": sort or "recent",
                 "limit": limit,
                 "count": len(page.items),
                 "has_cursor": cursor is not None,
@@ -486,24 +735,21 @@ def api_news(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="sources", methods=["GET"])
 def api_sources(req: func.HttpRequest) -> func.HttpResponse:
     include_counts = _parse_bool(req.params.get("include_counts"))
-    store = _store()
     sources = []
-    for ent in store.list_source_health():
-        last_fetch = ent.get("LastFetchAt")
-        if isinstance(last_fetch, datetime):
-            last_fetch = last_fetch.isoformat()
+    for view in _list_source_health_views():
         record = {
-            "sourceId": ent.get("RowKey"),
-            "lastFetchAt": last_fetch,
-            "lastStatus": ent.get("LastStatus"),
-            # Defence in depth: any legacy rows (pre-sanitizer) are also
-            # scrubbed here before reaching the client.
-            "lastError": _safe_error_summary(ent.get("LastError") or None),
+            "sourceId": view.source_id,
+            "sourceName": view.source_name,
+            "state": view.state,
+            "lastAttemptAt": view.last_attempt_at,
+            "lastFetchAt": view.last_fetch_at,
+            "lastSuccessAt": view.last_success_at,
+            "lastStatus": view.last_status,
+            "lastError": view.last_error,
         }
         if include_counts:
-            record["itemsLastRun"] = int(ent.get("ItemsLastRun") or 0)
+            record["itemsLastRun"] = view.items_last_run
         sources.append(record)
-    sources.sort(key=lambda r: r["sourceId"] or "")
     return _json_response({"sources": sources}, cache_seconds=60)
 
 
@@ -572,32 +818,299 @@ def api_hot(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="api_health")
 @app.route(route="health", methods=["GET"])
 def api_health(req: func.HttpRequest) -> func.HttpResponse:
-    store = _store()
-    stale: list[str] = []
     storage_ok = True
     now = datetime.now(UTC)
+    source_lists = {
+        "disabled": [],
+        "error": [],
+        "never": [],
+        "notModified": [],
+        "ok": [],
+        "stale": [],
+        "timerNotFiring": [],
+    }
     try:
-        for ent in store.list_source_health():
-            last_fetch = ent.get("LastFetchAt")
-            status = ent.get("LastStatus") or ""
-            if (
-                not isinstance(last_fetch, datetime)
-                or (now - last_fetch.astimezone(UTC)) > STALE_WINDOW
-                or status == "error"
-            ):
-                stale.append(str(ent.get("RowKey")))
+        for view in _list_source_health_views():
+            match view.state:
+                case "disabled":
+                    source_lists["disabled"].append(view.source_id)
+                case "error":
+                    source_lists["error"].append(view.source_id)
+                case "never":
+                    source_lists["never"].append(view.source_id)
+                case "not_modified":
+                    source_lists["notModified"].append(view.source_id)
+                case "stale":
+                    source_lists["stale"].append(view.source_id)
+                case "timer_not_firing":
+                    source_lists["timerNotFiring"].append(view.source_id)
+                case _:
+                    source_lists["ok"].append(view.source_id)
     except Exception:  # noqa: BLE001
         storage_ok = False
         log.exception("health check failed to enumerate SourceHealth")
 
+    degraded_sources = sorted(
+        source_lists["error"] + source_lists["never"] + source_lists["stale"] + source_lists["timerNotFiring"]
+    )
+    overall_ok = storage_ok and not degraded_sources
+
     body = {
-        "status": "ok" if storage_ok else "degraded",
+        "status": "ok" if overall_ok else "degraded",
         "storage": storage_ok,
-        "sourcesStale": sorted(stale),
+        "sourcesStale": degraded_sources,
+        "sourceCounts": {key: len(value) for key, value in source_lists.items()},
+        "sourcesByState": source_lists,
         "checkedAt": now.isoformat(),
     }
     status_code = 200 if storage_ok else 503
     return _json_response(body, status_code=status_code, cache_seconds=30)
+
+
+@app.function_name(name="api_visits")
+@app.route(route="visits", methods=["GET"])
+def api_visits(req: func.HttpRequest) -> func.HttpResponse:
+    day_key = _visit_day_key()
+    counts = _store().get_visit_counts(day_key=day_key)
+    return _json_response(
+        {
+            "today": counts["today"],
+            "allTime": counts["allTime"],
+            "dayKey": day_key,
+            "timezone": "UTC",
+        },
+        cache_seconds=60,
+    )
+
+
+@app.function_name(name="api_visits_track")
+@app.route(route="visits/track", methods=["POST"])
+def api_visits_track(req: func.HttpRequest) -> func.HttpResponse:
+    day_key = _visit_day_key()
+    counts = _store().record_visit(day_key=day_key)
+    return _json_response(
+        {
+            "today": counts["today"],
+            "allTime": counts["allTime"],
+            "dayKey": day_key,
+            "timezone": "UTC",
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments")
+@app.route(route="comments", methods=["GET", "POST"])
+def api_comments(req: func.HttpRequest) -> func.HttpResponse:
+    if req.method == "GET":
+        news_item_id = (req.params.get("item") or "").strip()
+        if not news_item_id:
+            return _json_response({"error": "missing_item"}, status_code=400)
+        comments = _store().list_visible_comments(news_item_id=news_item_id, limit=50)
+        return _json_response(
+            {
+                "comments": [_serialize_comment(comment) for comment in comments],
+                "count": len(comments),
+            },
+            cache_seconds=30,
+        )
+
+    data = _request_json(req)
+    news_item_id = _clean_comment_text(data.get("newsItemId"), max_chars=160)
+    user_id = _clean_comment_text(data.get("userId"), max_chars=96)
+    user_secret = _clean_comment_text(data.get("userSecret"), max_chars=160)
+    display_name = _clean_comment_text(
+        data.get("displayName"), max_chars=COMMENT_DISPLAY_NAME_MAX_CHARS
+    )
+    body_raw = str(data.get("body") or "")
+    body = _clean_comment_text(body_raw, max_chars=COMMENT_BODY_MAX_CHARS)
+
+    if not news_item_id:
+        return _json_response({"error": "missing_item"}, status_code=400)
+    if not _COMMENT_ID_PATTERN.match(user_id) or not _COMMENT_ID_PATTERN.match(user_secret):
+        return _json_response({"error": "invalid_user_identity"}, status_code=400)
+    if len(body_raw) > COMMENT_BODY_MAX_CHARS:
+        return _json_response({"error": "body_too_long"}, status_code=400)
+
+    validation_error = _comment_validation_error(display_name, body)
+    if validation_error:
+        return _json_response({"error": validation_error}, status_code=400)
+
+    store = _store()
+    secret_hash = _comment_secret_hash(user_id, user_secret)
+    user = store.get_comment_user(user_id)
+    if user is not None and not _constant_time_equal(user.get("SecretHash"), secret_hash):
+        return _json_response({"error": "invalid_user_identity"}, status_code=403)
+    if user is not None and str(user.get("Status") or "active") in {"muted", "banned"}:
+        return _json_response({"error": "user_not_allowed"}, status_code=403)
+
+    day_key = _visit_day_key()
+    rate = store.get_comment_rate_limit(user_id=user_id, day_key=day_key)
+    if rate is not None:
+        count = int(rate.get("Count") or 0)
+        last_comment_at = _as_utc_datetime(rate.get("LastCommentAt"))
+        if count >= COMMENT_MAX_PER_DAY:
+            return _json_response({"error": "rate_limited_daily"}, status_code=429)
+        if (
+            last_comment_at is not None
+            and datetime.now(UTC) - last_comment_at
+            < timedelta(seconds=COMMENT_MIN_SECONDS_BETWEEN_POSTS)
+        ):
+            return _json_response({"error": "rate_limited_recent"}, status_code=429)
+
+    store.upsert_comment_user(
+        user_id=user_id,
+        display_name=display_name,
+        secret_hash=secret_hash,
+    )
+    store.record_comment_rate_limit(user_id=user_id, day_key=day_key)
+    comment = store.add_comment(
+        news_item_id=news_item_id,
+        user_id=user_id,
+        display_name=display_name,
+        body=body,
+        status="visible",
+    )
+    return _json_response(
+        {
+            "comment": _serialize_comment(comment),
+            "status": "visible",
+        },
+        status_code=201,
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comment_counts")
+@app.route(route="comments/counts", methods=["GET"])
+def api_comment_counts(req: func.HttpRequest) -> func.HttpResponse:
+    raw_items = (req.params.get("items") or "").strip()
+    news_item_ids = [
+        _clean_comment_text(item, max_chars=160)
+        for item in raw_items.split(",")
+        if item.strip()
+    ][:100]
+    if not news_item_ids:
+        return _json_response({"counts": {}}, cache_seconds=30)
+    counts = _store().visible_comment_counts(news_item_ids=news_item_ids)
+    return _json_response({"counts": counts}, cache_seconds=30)
+
+
+@app.function_name(name="api_votes")
+@app.route(route="votes", methods=["GET", "POST"])
+def api_votes(req: func.HttpRequest) -> func.HttpResponse:
+    store = _store()
+    if req.method == "GET":
+        raw_items = (req.params.get("items") or "").strip()
+        user_id = _clean_comment_text(req.params.get("userId"), max_chars=96)
+        news_item_ids = [
+            _clean_comment_text(item, max_chars=160)
+            for item in raw_items.split(",")
+            if item.strip()
+        ][:100]
+        counts = store.article_vote_counts(news_item_ids=news_item_ids)
+        voted = store.article_user_votes(news_item_ids=news_item_ids, user_id=user_id)
+        return _json_response(
+            {
+                "votes": {
+                    item_id: {
+                        "count": counts.get(item_id, 0),
+                        "votedByMe": item_id in voted,
+                    }
+                    for item_id in news_item_ids
+                }
+            },
+            cache_seconds=0,
+            extra_headers={"Cache-Control": "no-store"},
+        )
+
+    data = _request_json(req)
+    news_item_id = _clean_comment_text(data.get("newsItemId"), max_chars=160)
+    user_id = _clean_comment_text(data.get("userId"), max_chars=96)
+    user_secret = _clean_comment_text(data.get("userSecret"), max_chars=160)
+    if not news_item_id:
+        return _json_response({"error": "missing_item"}, status_code=400)
+    if not _COMMENT_ID_PATTERN.match(user_id) or not _COMMENT_ID_PATTERN.match(user_secret):
+        return _json_response({"error": "invalid_user_identity"}, status_code=400)
+
+    secret_hash = _comment_secret_hash(user_id, user_secret)
+    user = store.get_comment_user(user_id)
+    if user is not None and not _constant_time_equal(user.get("SecretHash"), secret_hash):
+        return _json_response({"error": "invalid_user_identity"}, status_code=403)
+    if user is not None and str(user.get("Status") or "active") in {"muted", "banned"}:
+        return _json_response({"error": "user_not_allowed"}, status_code=403)
+    if user is None:
+        store.upsert_comment_user(user_id=user_id, display_name="", secret_hash=secret_hash)
+    result = store.toggle_article_vote(news_item_id=news_item_id, user_id=user_id)
+    return _json_response(
+        {
+            "newsItemId": news_item_id,
+            "count": result["count"],
+            "votedByMe": result["voted"],
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments_moderation")
+@app.route(route="comments/moderation", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
+def api_comments_moderation(req: func.HttpRequest) -> func.HttpResponse:
+    status = (req.params.get("status") or "pending").strip().lower()
+    if status not in {"pending", "flagged", "hidden", "rejected"}:
+        return _json_response({"error": "invalid_status"}, status_code=400)
+    limit = _parse_int(req.params.get("limit"), default=50, minimum=1, maximum=200)
+    comments = _store().list_moderation_comments(status=status, limit=limit)
+    return _json_response(
+        {
+            "comments": [_serialize_comment(comment, admin=True) for comment in comments],
+            "count": len(comments),
+            "status": status,
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.function_name(name="api_comments_moderate")
+@app.route(route="comments/moderate", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+def api_comments_moderate(req: func.HttpRequest) -> func.HttpResponse:
+    data = _request_json(req)
+    action = _clean_comment_text(data.get("action"), max_chars=32).lower()
+    reason = _clean_comment_text(data.get("reason"), max_chars=500)
+    comment_partition_key = _clean_comment_text(data.get("commentPartitionKey"), max_chars=240)
+    comment_row_key = _clean_comment_text(data.get("commentRowKey"), max_chars=240)
+    if action not in {"approve", "hide", "flag", "reject", "ban_user"}:
+        return _json_response({"error": "invalid_action"}, status_code=400)
+    if not comment_partition_key or not comment_row_key:
+        return _json_response({"error": "missing_comment"}, status_code=400)
+
+    store = _store()
+    moderation_action = "hide" if action == "ban_user" else action
+    comment = store.moderate_comment(
+        comment_partition_key=comment_partition_key,
+        comment_row_key=comment_row_key,
+        action=moderation_action,
+        reason=reason,
+    )
+    if comment is None:
+        return _json_response({"error": "comment_not_found"}, status_code=404)
+    if action == "ban_user":
+        store.update_comment_user_status(
+            user_id=str(comment.get("UserId") or ""),
+            status="banned",
+            note=reason,
+        )
+    return _json_response(
+        {
+            "comment": _serialize_comment(comment, admin=True),
+            "action": action,
+        },
+        cache_seconds=0,
+        extra_headers={"Cache-Control": "no-store"},
+    )
 
 
 # ---- HTTP: RSS / Atom feeds -------------------------------------------------
@@ -606,7 +1119,11 @@ def api_health(req: func.HttpRequest) -> func.HttpResponse:
 def _feed_items(limit: int = 50) -> list[dict]:
     store = _store()
     page = store.query_page(limit=limit, deduped=True)
-    return [_serialize_entity(e) for e in page.items]
+    return [
+        item
+        for item in (_serialize_entity(e) for e in page.items)
+        if _is_enabled_source_id(str(item["sourceId"]))
+    ]
 
 
 def _rfc822(dt: datetime) -> str:

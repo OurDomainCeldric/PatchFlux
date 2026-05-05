@@ -65,7 +65,7 @@ export default async function LocaleLayout({
   ).replace(/\/$/, "");
   const apiBaseUrl = (
     process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "https://func-omlorsnews-prod.azurewebsites.net/api"
+    "/api"
   ).replace(/\/$/, "");
   // Derive the API origin for preconnect (strip /api and any trailing path).
   let apiOrigin = "";
@@ -99,10 +99,24 @@ export default async function LocaleLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('ServiceWorker registration successful');
-                  }, function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    return Promise.all(
+                      registrations.map(function(registration) {
+                        return registration.unregister();
+                      })
+                    );
+                  }).then(function() {
+                    if ('caches' in window) {
+                      return caches.keys().then(function(keys) {
+                        return Promise.all(
+                          keys.map(function(key) {
+                            return caches.delete(key);
+                          })
+                        );
+                      });
+                    }
+                  }).catch(function(err) {
+                    console.log('ServiceWorker cleanup failed: ', err);
                   });
                 });
               }

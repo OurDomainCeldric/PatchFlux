@@ -15,11 +15,12 @@ import base64
 import binascii
 import json
 import logging
+import uuid
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from azure.core.exceptions import ResourceExistsError
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import TableClient, TableServiceClient, UpdateMode
 
 from models.news_item import NewsItem
@@ -101,13 +102,30 @@ class NewsStore:
     connection_string: str
     news_table: str = "NewsItems"
     source_health_table: str = "SourceHealth"
+    visit_counter_table: str = "VisitCounters"
+    comment_user_table: str = "CommentUsers"
+    comment_table: str = "Comments"
+    comment_moderation_table: str = "CommentModeration"
+    comment_rate_limit_table: str = "CommentRateLimits"
+    article_vote_table: str = "ArticleVotes"
+    article_user_vote_table: str = "ArticleUserVotes"
 
     def _service(self) -> TableServiceClient:
         return TableServiceClient.from_connection_string(self.connection_string)
 
     def ensure_tables(self) -> None:
         svc = self._service()
-        for name in (self.news_table, self.source_health_table):
+        for name in (
+            self.news_table,
+            self.source_health_table,
+            self.visit_counter_table,
+            self.comment_user_table,
+            self.comment_table,
+            self.comment_moderation_table,
+            self.comment_rate_limit_table,
+            self.article_vote_table,
+            self.article_user_vote_table,
+        ):
             try:
                 svc.create_table(name)
                 log.info("Created table %s", name)
@@ -119,6 +137,33 @@ class NewsStore:
 
     def _health_client(self) -> TableClient:
         return TableClient.from_connection_string(self.connection_string, self.source_health_table)
+
+    def _visit_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.visit_counter_table)
+
+    def _comment_user_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.comment_user_table)
+
+    def _comment_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.comment_table)
+
+    def _comment_moderation_client(self) -> TableClient:
+        return TableClient.from_connection_string(
+            self.connection_string, self.comment_moderation_table
+        )
+
+    def _comment_rate_limit_client(self) -> TableClient:
+        return TableClient.from_connection_string(
+            self.connection_string, self.comment_rate_limit_table
+        )
+
+    def _article_vote_client(self) -> TableClient:
+        return TableClient.from_connection_string(self.connection_string, self.article_vote_table)
+
+    def _article_user_vote_client(self) -> TableClient:
+        return TableClient.from_connection_string(
+            self.connection_string, self.article_user_vote_table
+        )
 
     # ---- NewsItems ------------------------------------------------------
 
@@ -348,15 +393,20 @@ class NewsStore:
         last_modified: str | None = None,
         items_last_run: int | None = None,
     ) -> None:
+        now = datetime.now(UTC)
         entity: dict[str, object] = {
             "PartitionKey": "sources",
             "RowKey": source_id,
-            "LastFetchAt": datetime.now(UTC),
+            "LastAttemptAt": now,
             "LastStatus": status,
             "LastError": (error or "")[:500],
             "ETag": etag or "",
             "LastModified": last_modified or "",
         }
+        if status != "error":
+            entity["LastFetchAt"] = now
+        if status in {"ok", "not_modified"}:
+            entity["LastSuccessAt"] = now
         if items_last_run is not None:
             entity["ItemsLastRun"] = int(items_last_run)
         with self._health_client() as client:
@@ -372,3 +422,379 @@ class NewsStore:
     def list_source_health(self) -> Iterator[dict]:
         with self._health_client() as client:
             yield from client.query_entities("PartitionKey eq 'sources'")
+
+    # ---- VisitCounters --------------------------------------------------
+
+    def _counter_key(self, day_key: str | None = None) -> str:
+        return "total" if day_key is None else f"day:{day_key}"
+
+    def _read_counter(self, row_key: str) -> int:
+        with self._visit_client() as client:
+            try:
+                entity = client.get_entity(partition_key="visits", row_key=row_key)
+            except ResourceNotFoundError:
+                return 0
+        return int(entity.get("Count") or 0)
+
+    def get_visit_counts(self, *, day_key: str) -> dict[str, int]:
+        return {
+            "today": self._read_counter(self._counter_key(day_key)),
+            "allTime": self._read_counter(self._counter_key()),
+        }
+
+    def _increment_counter(self, row_key: str) -> int:
+        with self._visit_client() as client:
+            try:
+                entity = client.get_entity(partition_key="visits", row_key=row_key)
+                count = int(entity.get("Count") or 0) + 1
+            except ResourceNotFoundError:
+                count = 1
+            client.upsert_entity(
+                {
+                    "PartitionKey": "visits",
+                    "RowKey": row_key,
+                    "Count": count,
+                    "UpdatedAt": datetime.now(UTC),
+                },
+                mode=UpdateMode.MERGE,
+            )
+        return count
+
+    def record_visit(self, *, day_key: str) -> dict[str, int]:
+        return {
+            "today": self._increment_counter(self._counter_key(day_key)),
+            "allTime": self._increment_counter(self._counter_key()),
+        }
+
+    # ---- Comments -------------------------------------------------------
+
+    def get_comment_user(self, user_id: str) -> dict | None:
+        with self._comment_user_client() as client:
+            try:
+                return client.get_entity(partition_key="users", row_key=user_id)
+            except ResourceNotFoundError:
+                return None
+
+    def upsert_comment_user(
+        self,
+        *,
+        user_id: str,
+        display_name: str,
+        secret_hash: str,
+    ) -> dict:
+        now = datetime.now(UTC)
+        existing = self.get_comment_user(user_id)
+        entity: dict[str, object] = {
+            "PartitionKey": "users",
+            "RowKey": user_id,
+            "DisplayName": display_name,
+            "SecretHash": secret_hash,
+            "LastSeenAt": now,
+        }
+        if existing is None:
+            entity.update(
+                {
+                    "CreatedAt": now,
+                    "Status": "active",
+                    "CommentCount": 0,
+                    "ModerationNote": "",
+                }
+            )
+        with self._comment_user_client() as client:
+            client.upsert_entity(entity, mode=UpdateMode.MERGE)
+            return client.get_entity(partition_key="users", row_key=user_id)
+
+    def increment_comment_user_count(self, *, user_id: str) -> None:
+        with self._comment_user_client() as client:
+            try:
+                entity = client.get_entity(partition_key="users", row_key=user_id)
+            except ResourceNotFoundError:
+                return
+            entity["CommentCount"] = int(entity.get("CommentCount") or 0) + 1
+            entity["LastSeenAt"] = datetime.now(UTC)
+            client.upsert_entity(entity, mode=UpdateMode.MERGE)
+
+    def update_comment_user_status(
+        self,
+        *,
+        user_id: str,
+        status: str,
+        note: str = "",
+    ) -> None:
+        with self._comment_user_client() as client:
+            try:
+                entity = client.get_entity(partition_key="users", row_key=user_id)
+            except ResourceNotFoundError:
+                return
+            entity["Status"] = status
+            entity["ModerationNote"] = note[:500]
+            entity["ModeratedAt"] = datetime.now(UTC)
+            client.upsert_entity(entity, mode=UpdateMode.MERGE)
+
+    def get_comment_rate_limit(self, *, user_id: str, day_key: str) -> dict | None:
+        with self._comment_rate_limit_client() as client:
+            try:
+                return client.get_entity(partition_key=f"day:{day_key}", row_key=user_id)
+            except ResourceNotFoundError:
+                return None
+
+    def record_comment_rate_limit(self, *, user_id: str, day_key: str) -> dict:
+        now = datetime.now(UTC)
+        with self._comment_rate_limit_client() as client:
+            try:
+                entity = client.get_entity(partition_key=f"day:{day_key}", row_key=user_id)
+                entity["Count"] = int(entity.get("Count") or 0) + 1
+            except ResourceNotFoundError:
+                entity = {
+                    "PartitionKey": f"day:{day_key}",
+                    "RowKey": user_id,
+                    "Count": 1,
+                    "CreatedAt": now,
+                }
+            entity["LastCommentAt"] = now
+            client.upsert_entity(entity, mode=UpdateMode.MERGE)
+            return entity
+
+    def add_comment(
+        self,
+        *,
+        news_item_id: str,
+        user_id: str,
+        display_name: str,
+        body: str,
+        status: str,
+    ) -> dict:
+        now = datetime.now(UTC)
+        comment_id = uuid.uuid4().hex
+        row_key = f"{_INVERTED_TS_BASE - int(now.timestamp()):010d}_{comment_id}"
+        entity: dict[str, object] = {
+            "PartitionKey": f"article:{news_item_id}",
+            "RowKey": row_key,
+            "CommentId": comment_id,
+            "NewsItemId": news_item_id,
+            "UserId": user_id,
+            "DisplayName": display_name,
+            "Body": body,
+            "Status": status,
+            "CreatedAt": now,
+            "UpdatedAt": now,
+            "ReportCount": 0,
+            "ModerationReason": "",
+        }
+        with self._comment_client() as client:
+            client.create_entity(entity)
+        if status != "visible":
+            self._upsert_comment_moderation_index(entity)
+        self.increment_comment_user_count(user_id=user_id)
+        return entity
+
+    def list_visible_comments(self, *, news_item_id: str, limit: int = 50) -> list[dict]:
+        comments: list[dict] = []
+        with self._comment_client() as client:
+            entities = client.query_entities(
+                query_filter="PartitionKey eq @pk and Status eq @status",
+                parameters={"pk": f"article:{news_item_id}", "status": "visible"},
+            )
+            for ent in entities:
+                comments.append(ent)
+                if len(comments) >= limit:
+                    break
+        return comments
+
+    def visible_comment_counts(self, *, news_item_ids: Iterable[str]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        with self._comment_client() as client:
+            for news_item_id in news_item_ids:
+                count = 0
+                entities = client.query_entities(
+                    query_filter="PartitionKey eq @pk and Status eq @status",
+                    parameters={"pk": f"article:{news_item_id}", "status": "visible"},
+                    select=["RowKey"],
+                )
+                for _ in entities:
+                    count += 1
+                counts[news_item_id] = count
+        return counts
+
+    def list_moderation_comments(self, *, status: str, limit: int = 100) -> list[dict]:
+        comments: list[dict] = []
+        with self._comment_moderation_client() as index_client:
+            pointers = index_client.query_entities(
+                query_filter="PartitionKey eq @pk",
+                parameters={"pk": f"status:{status}"},
+            )
+            for pointer in pointers:
+                partition_key = str(pointer.get("CommentPartitionKey") or "")
+                row_key = str(pointer.get("CommentRowKey") or "")
+                if not partition_key or not row_key:
+                    continue
+                try:
+                    with self._comment_client() as comment_client:
+                        comments.append(
+                            comment_client.get_entity(
+                                partition_key=partition_key,
+                                row_key=row_key,
+                            )
+                        )
+                except ResourceNotFoundError:
+                    pass
+                if len(comments) >= limit:
+                    break
+        return comments
+
+    def moderate_comment(
+        self,
+        *,
+        comment_partition_key: str,
+        comment_row_key: str,
+        action: str,
+        reason: str,
+    ) -> dict | None:
+        status_by_action = {
+            "approve": "visible",
+            "hide": "hidden",
+            "flag": "flagged",
+            "reject": "rejected",
+        }
+        next_status = status_by_action.get(action)
+        if next_status is None:
+            return None
+        with self._comment_client() as client:
+            try:
+                entity = client.get_entity(
+                    partition_key=comment_partition_key,
+                    row_key=comment_row_key,
+                )
+            except ResourceNotFoundError:
+                return None
+            previous_status = str(entity.get("Status") or "")
+            entity["Status"] = next_status
+            entity["UpdatedAt"] = datetime.now(UTC)
+            entity["ModeratedAt"] = datetime.now(UTC)
+            entity["ModerationReason"] = reason[:500]
+            client.upsert_entity(entity, mode=UpdateMode.MERGE)
+        self._delete_comment_moderation_index(
+            status=previous_status,
+            comment_partition_key=comment_partition_key,
+            comment_row_key=comment_row_key,
+        )
+        if next_status != "visible":
+            self._upsert_comment_moderation_index(entity)
+        return entity
+
+    def _comment_index_row_key(self, ent: dict) -> str:
+        return f"{ent.get('RowKey')}_{ent.get('CommentId')}"
+
+    def _upsert_comment_moderation_index(self, ent: dict) -> None:
+        status = str(ent.get("Status") or "pending")
+        with self._comment_moderation_client() as client:
+            client.upsert_entity(
+                {
+                    "PartitionKey": f"status:{status}",
+                    "RowKey": self._comment_index_row_key(ent),
+                    "CommentPartitionKey": ent.get("PartitionKey"),
+                    "CommentRowKey": ent.get("RowKey"),
+                    "NewsItemId": ent.get("NewsItemId"),
+                    "CreatedAt": ent.get("CreatedAt"),
+                    "UpdatedAt": datetime.now(UTC),
+                },
+                mode=UpdateMode.MERGE,
+            )
+
+    def _delete_comment_moderation_index(
+        self,
+        *,
+        status: str,
+        comment_partition_key: str,
+        comment_row_key: str,
+    ) -> None:
+        if not status or status == "visible":
+            return
+        prefix = f"{comment_row_key}_"
+        with self._comment_moderation_client() as client:
+            entities = client.query_entities(
+                query_filter="PartitionKey eq @pk",
+                parameters={"pk": f"status:{status}"},
+            )
+            for ent in entities:
+                if (
+                    str(ent.get("CommentPartitionKey") or "") == comment_partition_key
+                    and str(ent.get("RowKey") or "").startswith(prefix)
+                ):
+                    client.delete_entity(
+                        partition_key=str(ent.get("PartitionKey")),
+                        row_key=str(ent.get("RowKey")),
+                    )
+
+    # ---- ArticleVotes ---------------------------------------------------
+
+    def article_vote_counts(self, *, news_item_ids: Iterable[str]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        with self._article_vote_client() as client:
+            for news_item_id in news_item_ids:
+                try:
+                    entity = client.get_entity(partition_key="votes", row_key=news_item_id)
+                    counts[news_item_id] = int(entity.get("HelpfulCount") or 0)
+                except ResourceNotFoundError:
+                    counts[news_item_id] = 0
+        return counts
+
+    def article_user_votes(self, *, news_item_ids: Iterable[str], user_id: str) -> set[str]:
+        voted: set[str] = set()
+        if not user_id:
+            return voted
+        with self._article_user_vote_client() as client:
+            for news_item_id in news_item_ids:
+                try:
+                    entity = client.get_entity(
+                        partition_key=f"article:{news_item_id}",
+                        row_key=user_id,
+                    )
+                except ResourceNotFoundError:
+                    continue
+                if str(entity.get("Status") or "") == "active":
+                    voted.add(news_item_id)
+        return voted
+
+    def toggle_article_vote(self, *, news_item_id: str, user_id: str) -> dict:
+        now = datetime.now(UTC)
+        with self._article_user_vote_client() as user_client:
+            try:
+                user_vote = user_client.get_entity(
+                    partition_key=f"article:{news_item_id}",
+                    row_key=user_id,
+                )
+                was_active = str(user_vote.get("Status") or "") == "active"
+            except ResourceNotFoundError:
+                user_vote = {
+                    "PartitionKey": f"article:{news_item_id}",
+                    "RowKey": user_id,
+                    "UserId": user_id,
+                    "NewsItemId": news_item_id,
+                    "CreatedAt": now,
+                }
+                was_active = False
+            next_active = not was_active
+            user_vote["Status"] = "active" if next_active else "inactive"
+            user_vote["UpdatedAt"] = now
+            user_client.upsert_entity(user_vote, mode=UpdateMode.MERGE)
+
+        with self._article_vote_client() as vote_client:
+            try:
+                aggregate = vote_client.get_entity(partition_key="votes", row_key=news_item_id)
+                count = int(aggregate.get("HelpfulCount") or 0)
+            except ResourceNotFoundError:
+                aggregate = {
+                    "PartitionKey": "votes",
+                    "RowKey": news_item_id,
+                    "HelpfulCount": 0,
+                    "CreatedAt": now,
+                }
+                count = 0
+            count = count + 1 if next_active else max(0, count - 1)
+            aggregate["HelpfulCount"] = count
+            aggregate["UpdatedAt"] = now
+            if next_active:
+                aggregate["LastVotedAt"] = now
+            vote_client.upsert_entity(aggregate, mode=UpdateMode.MERGE)
+        return {"count": count, "voted": next_active}

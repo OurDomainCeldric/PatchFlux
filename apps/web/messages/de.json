@@ -13,8 +13,11 @@
   },
   "tabs": {
     "ariaLabel": "Feed-Auswahl",
+    "recent": "Aktuelles",
+    "hot": "Hot News",
     "news": "News & Blogs",
-    "community": "Community"
+    "community": "Community",
+    "communityTemporarilyDisabled": "Die Community-Sektion ist vorübergehend deaktiviert, während wir verlässliche Ersatzquellen für die bisher ausgefallenen Reddit-Feeds vorbereiten."
   },
   "nav": {
     "news": "News",
@@ -48,6 +51,7 @@
   },
   "news": {
     "empty": "Keine Meldungen passen zu den Filtern.",
+    "emptyHot": "Noch keine hilfreichen Meldungen im aktuellen Zeitraum. Markiere Artikel als hilfreich, damit dieser Tab lebendig wird.",
     "emptyWithFilters": "Keine Meldungen passen zu den aktuellen Filtern.",
     "activeFilters": "Aktive Filter: {filters}",
     "clearAll": "Alle Filter zurücksetzen",
@@ -67,18 +71,61 @@
     "hotTicker": "Ticker mit Top-News",
     "contentLanguage": "Sprache des Artikels"
   },
+  "votes": {
+    "helpful": "Hilfreich",
+    "tierUseful": "Nützlich",
+    "tierWarm": "Warm",
+    "tierHot": "Hot",
+    "title": "Diesen Artikel als hilfreich markieren"
+  },
+  "comments": {
+    "toggle": "Kommentare",
+    "toggleWithCount": "{count, plural, =0 {Kommentare} one {1 Kommentar} other {# Kommentare}}",
+    "hide": "Kommentare ausblenden",
+    "loading": "Lade Kommentare …",
+    "empty": "Noch keine Kommentare. Sei gern die erste Person mit einem hilfreichen Hinweis.",
+    "policy": "Bitte hilfreich und respektvoll bleiben. Links und rassistische Sprache werden nicht akzeptiert.",
+    "displayName": "Anzeigename",
+    "body": "Dein Kommentar",
+    "remaining": "{count} Zeichen übrig",
+    "submit": "Kommentar senden",
+    "sending": "Sende …",
+    "errors": {
+      "displayNameRequired": "Bitte gib einen Anzeigenamen ein.",
+      "bodyRequired": "Bitte schreibe zuerst einen Kommentar.",
+      "bodyTooLong": "Der Kommentar ist zu lang.",
+      "linksNotAllowed": "Links sind in Kommentaren nicht erlaubt.",
+      "blockedLanguage": "Dieser Kommentar wurde durch die Moderationsregeln blockiert.",
+      "rateLimited": "Bitte warte kurz, bevor du erneut kommentierst.",
+      "userNotAllowed": "Dieses browser-lokale Konto darf keine Kommentare schreiben.",
+      "generic": "Der Kommentar konnte nicht gesendet werden."
+    }
+  },
   "sources": {
     "heading": "Quellen & Status",
     "description": "Status der Feed-Abrufe. Alle Quellen werden ausschließlich über offizielle APIs und RSS-/Atom-Feeds abgerufen.",
-    "lastFetch": "Letzter Abruf",
+    "state": "Betriebszustand",
+    "lastFetch": "Letzter erfolgreicher Abruf",
+    "lastAttempt": "Letzter Versuch",
+    "lastSuccess": "Letzter Erfolg",
     "status": "Status",
     "error": "Fehler",
     "never": "noch nie",
-    "itemsLastRun": "Einträge (letzter Lauf)"
+    "itemsLastRun": "Einträge (letzter Lauf)",
+    "states": {
+      "ok": "OK",
+      "not_modified": "Unverändert",
+      "error": "Fehler",
+      "stale": "Veraltet",
+      "timer_not_firing": "Timer läuft nicht",
+      "disabled": "Deaktiviert",
+      "never": "Nie gelaufen"
+    }
   },
   "footer": {
     "disclaimer": "PatchFlux ist ein unabhängiges Drittanbieter-Tool. Nicht verbunden mit, unterstützt von oder in irgendeiner Weise offiziell verknüpft mit Microsoft, Heise, Borns IT-Blog oder anderen genannten Verlagen. Alle Markenzeichen gehören ihren jeweiligen Inhabern.",
     "legalNotice": "Es werden ausschließlich Metadaten (Überschrift, Datum, Quelle, Link) gespeichert. Jede Meldung verlinkt auf den Originalartikel beim jeweiligen Verlag.",
+    "visitCounter": "Besuche heute: {today} · gesamt: {allTime}",
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "rss": "RSS",
@@ -116,11 +163,11 @@
     "dpoHeading": "2. Datenschutzbeauftragter",
     "dpoBody": "Für den nicht-kommerziellen Privatbetrieb besteht keine gesetzliche Pflicht zur Bestellung eines Datenschutzbeauftragten (§ 38 BDSG). Anfragen werden direkt vom Verantwortlichen bearbeitet.",
     "dataHeading": "3. Welche Daten wir verarbeiten",
-    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Es wird keine Registrierung angeboten; es werden keine personenbezogenen Formulardaten verarbeitet.",
+    "dataBody": "Beim Aufruf der Seite werden folgende technische Daten verarbeitet: IP-Adresse des anfragenden Geräts, Datum und Uhrzeit der Anfrage, aufgerufener Pfad, HTTP-Antwortcode, übertragene Datenmenge, Referrer (falls vom Browser gesendet) sowie der User-Agent-String. Die Seite setzt keine Cookies, lädt keine clientseitigen Analyse- oder Werbe-Tracker und erstellt keine Benutzerprofile. Kommentare und Hilfreich-Votes nutzen eine browser-lokale pseudonyme Identität im localStorage (zufällige Nutzer-ID und Secret). Wenn du kommentierst, speichert PatchFlux Anzeigenamen, Kommentartext, zugehörige Meldung, Zeitpunkte, Moderationsstatus und einen Hash des browser-lokalen Secrets. Wenn du einen Artikel als hilfreich markierst, speichert PatchFlux die zugehörige Meldung, die pseudonyme Nutzer-ID, den Vote-Status und Zeitpunkte. Das Kommentar- und Vote-System speichert keine E-Mail-Adresse, kein Passwort, keine IP-Adresse und keinen Geräte-Fingerprint. Zusätzlich speichert die Website einen rein aggregierten Besuchszähler (heute / gesamt), ohne IP-Adressen oder persönliche Profile zu speichern.",
     "legalBasisHeading": "4. Rechtsgrundlagen und Zwecke",
     "legalBasisBody": "Die Verarbeitung der oben genannten Zugriffsdaten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Das berechtigte Interesse liegt im zuverlässigen, sicheren und missbrauchsfreien Betrieb der Website sowie in der kurzfristigen Fehler- und Kapazitätsanalyse. Soweit beim Abruf der Seite Daten zur Vertragsanbahnung oder -erfüllung verarbeitet würden (z. B. bei zukünftigen Kontaktformularen), erfolgt dies auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO.",
     "retentionHeading": "5. Speicherdauer",
-    "retentionBody": "Plattform-seitige Zugriffslogs (Azure Static Web Apps, Azure Functions) werden bis zu 7 Tage vorgehalten. In Azure Application Insights werden anonymisierte Telemetrie-Datensätze (Pfad, Antwortzeit, HTTP-Code, User-Agent-Kategorie) bis zu 30 Tage gespeichert; die IP-Adresse wird ausschließlich zur groben Geolokalisierung (Land/Region) ausgewertet und unmittelbar auf 0.0.0.0 maskiert (DisableIpMasking ist deaktiviert). Eine personenbezogene Re-Identifikation ist dem Betreiber nicht möglich.",
+    "retentionBody": "Plattform-seitige Zugriffslogs (Azure Static Web Apps, Azure Functions) werden bis zu 7 Tage vorgehalten. In Azure Application Insights werden anonymisierte Telemetrie-Datensätze (Pfad, Antwortzeit, HTTP-Code, User-Agent-Kategorie) bis zu 30 Tage gespeichert; die IP-Adresse wird ausschließlich zur groben Geolokalisierung (Land/Region) ausgewertet und unmittelbar auf 0.0.0.0 maskiert (DisableIpMasking ist deaktiviert). Sichtbare Kommentare bleiben gespeichert, bis sie vom Betreiber oder nach berechtigter Löschanfrage entfernt werden. Ausgeblendete oder abgelehnte Kommentare können als Moderationsnachweis und zur Missbrauchsvermeidung aufbewahrt werden. Eine personenbezogene Re-Identifikation allein aus Telemetrie ist dem Betreiber nicht möglich.",
     "processorsHeading": "6. Auftragsverarbeiter",
     "processorsBody": "Für den Betrieb der Website werden folgende Auftragsverarbeiter gemäß Art. 28 DSGVO eingesetzt: Microsoft Ireland Operations Ltd., One Microsoft Place, South County Business Park, Leopardstown, Dublin 18, D18 P521, Irland (Hosting: Azure Static Web Apps + Azure Functions + Azure Table Storage + Application Insights; Region ‚West Europe‘, Rechenzentrum Niederlande).",
     "transferHeading": "7. Übermittlung in Drittländer",
@@ -182,7 +229,24 @@
     "healthOk": "OK",
     "healthDegraded": "Eingeschränkt",
     "staleSources": "Veraltete Quellen",
+    "statusBreakdown": "Statusverteilung",
     "none": "keine",
-    "ingestError": "Ingest-Aufruf fehlgeschlagen."
+    "ingestError": "Ingest-Aufruf fehlgeschlagen.",
+    "comments": "Kommentar-Moderation",
+    "commentsHint": "Ausgeblendete, abgelehnte, markierte oder wartende Kommentare prüfen. Öffentliche Kommentare erscheinen nur nach deterministischen Checks automatisch.",
+    "commentStatuses": {
+      "pending": "Wartend",
+      "flagged": "Markiert",
+      "hidden": "Ausgeblendet",
+      "rejected": "Abgelehnt"
+    },
+    "moderationReason": "Grund / Notiz",
+    "loadComments": "Queue laden",
+    "loading": "Lädt …",
+    "noComments": "Keine Kommentare in dieser Queue.",
+    "approveComment": "Freigeben",
+    "hideComment": "Ausblenden",
+    "banUser": "Nutzer sperren",
+    "moderationError": "Moderationsaufruf fehlgeschlagen."
   }
 }

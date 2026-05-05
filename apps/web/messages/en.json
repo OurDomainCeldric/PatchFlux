@@ -13,8 +13,11 @@
   },
   "tabs": {
     "ariaLabel": "Feed type",
+    "recent": "Latest",
+    "hot": "Hot News",
     "news": "News & Blogs",
-    "community": "Community"
+    "community": "Community",
+    "communityTemporarilyDisabled": "The community section is temporarily disabled while we prepare reliable replacement sources for the failed Reddit feeds."
   },
   "nav": {
     "news": "News",
@@ -48,6 +51,7 @@
   },
   "news": {
     "empty": "No items match your filters.",
+    "emptyHot": "No helpful items in the current window yet. Mark articles as helpful to make this tab come alive.",
     "emptyWithFilters": "No items match the current filters.",
     "activeFilters": "Active filters: {filters}",
     "clearAll": "Clear all filters",
@@ -67,18 +71,61 @@
     "hotTicker": "Hot news ticker",
     "contentLanguage": "Content language"
   },
+  "votes": {
+    "helpful": "Helpful",
+    "tierUseful": "Useful",
+    "tierWarm": "Warm",
+    "tierHot": "Hot",
+    "title": "Mark this article as helpful"
+  },
+  "comments": {
+    "toggle": "Comments",
+    "toggleWithCount": "{count, plural, =0 {Comments} one {1 comment} other {# comments}}",
+    "hide": "Hide comments",
+    "loading": "Loading comments …",
+    "empty": "No comments yet. Be the first to add a careful note.",
+    "policy": "Keep it useful and respectful. Links and racist language are not accepted.",
+    "displayName": "Display name",
+    "body": "Your comment",
+    "remaining": "{count} characters left",
+    "submit": "Post comment",
+    "sending": "Sending …",
+    "errors": {
+      "displayNameRequired": "Please enter a display name.",
+      "bodyRequired": "Please write a comment first.",
+      "bodyTooLong": "The comment is too long.",
+      "linksNotAllowed": "Links are not allowed in comments.",
+      "blockedLanguage": "This comment was blocked by the moderation rules.",
+      "rateLimited": "Please wait before posting another comment.",
+      "userNotAllowed": "This browser-local account cannot post comments.",
+      "generic": "The comment could not be posted."
+    }
+  },
   "sources": {
     "heading": "Sources & status",
     "description": "Feed fetch status. All sources are consumed exclusively via official APIs and RSS/Atom feeds.",
-    "lastFetch": "Last fetch",
+    "state": "Operational state",
+    "lastFetch": "Last successful fetch",
+    "lastAttempt": "Last attempt",
+    "lastSuccess": "Last success",
     "status": "Status",
     "error": "Error",
     "never": "never",
-    "itemsLastRun": "Items (last run)"
+    "itemsLastRun": "Items (last run)",
+    "states": {
+      "ok": "OK",
+      "not_modified": "Not modified",
+      "error": "Error",
+      "stale": "Stale",
+      "timer_not_firing": "Timer not firing",
+      "disabled": "Disabled",
+      "never": "Never run"
+    }
   },
   "footer": {
     "disclaimer": "PatchFlux is an independent third-party tool. Not affiliated with, endorsed by, or officially connected to Microsoft, Heise, Borns IT-Blog, or any other referenced publisher. All trademarks belong to their respective owners.",
     "legalNotice": "Only metadata is stored (headline, date, source, link). Every item links to the original article at the publisher.",
+    "visitCounter": "Visits today: {today} · all time: {allTime}",
     "imprint": "Imprint",
     "privacy": "Privacy",
     "rss": "RSS",
@@ -116,11 +163,11 @@
     "dpoHeading": "2. Data Protection Officer",
     "dpoBody": "A DPO is not required for this non-commercial private operation (§ 38 BDSG, Germany). Requests are handled directly by the controller.",
     "dataHeading": "3. What data we process",
-    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. No registration is offered; no personal form data is processed.",
+    "dataBody": "When you access the site, the following technical data is processed: the requesting device's IP address, date and time of the request, the requested path, HTTP status code, bytes transferred, referrer (if sent by your browser) and the User-Agent string. The site sets no cookies, loads no client-side analytics or advertising trackers, and creates no user profiles. Comments and helpful votes use a browser-local pseudonymous identity stored in localStorage (random user id and secret). If you post a comment, PatchFlux stores the display name, comment text, related news item, timestamps, moderation status, and a hash of the browser-local secret. If you mark an article as helpful, PatchFlux stores the related news item, pseudonymous user id, vote status, and timestamps. No email address, password, IP address, or device fingerprint is stored by the comment or vote system. In addition, the site stores a purely aggregate visit counter (today / all time) without saving IP addresses or personal profiles.",
     "legalBasisHeading": "4. Legal bases and purposes",
     "legalBasisBody": "The access data above is processed on the basis of Art. 6 (1) (f) GDPR (legitimate interests). The legitimate interest lies in the reliable, secure and abuse-free operation of the website and in short-term error and capacity analysis. Should future features process data for the performance of a contract (e.g. contact forms), the legal basis is Art. 6 (1) (b) GDPR.",
     "retentionHeading": "5. Retention",
-    "retentionBody": "Platform-side access logs (Azure Static Web Apps, Azure Functions) are retained for up to 7 days. Azure Application Insights stores anonymised telemetry (path, response time, HTTP code, User-Agent category) for up to 30 days; the IP address is used only for coarse geolocation (country/region) and is masked to 0.0.0.0 immediately (DisableIpMasking remains off). The operator cannot re-identify individuals from this telemetry.",
+    "retentionBody": "Platform-side access logs (Azure Static Web Apps, Azure Functions) are retained for up to 7 days. Azure Application Insights stores anonymised telemetry (path, response time, HTTP code, User-Agent category) for up to 30 days; the IP address is used only for coarse geolocation (country/region) and is masked to 0.0.0.0 immediately (DisableIpMasking remains off). Visible comments are retained until they are removed by the operator or by a valid deletion request. Hidden or rejected comments may be retained for moderation evidence and abuse prevention. The operator cannot re-identify individuals from telemetry alone.",
     "processorsHeading": "6. Processors",
     "processorsBody": "The following processor under Art. 28 GDPR is used to operate the site: Microsoft Ireland Operations Ltd., One Microsoft Place, South County Business Park, Leopardstown, Dublin 18, D18 P521, Ireland (hosting: Azure Static Web Apps + Azure Functions + Azure Table Storage + Application Insights; region ‘West Europe’, data centre: Netherlands).",
     "transferHeading": "7. Transfers to third countries",
@@ -182,7 +229,24 @@
     "healthOk": "OK",
     "healthDegraded": "Degraded",
     "staleSources": "Stale sources",
+    "statusBreakdown": "Status breakdown",
     "none": "none",
-    "ingestError": "Ingest request failed."
+    "ingestError": "Ingest request failed.",
+    "comments": "Comment moderation",
+    "commentsHint": "Review hidden, rejected, flagged, or pending comments. Public comments auto-publish only after deterministic checks.",
+    "commentStatuses": {
+      "pending": "Pending",
+      "flagged": "Flagged",
+      "hidden": "Hidden",
+      "rejected": "Rejected"
+    },
+    "moderationReason": "Reason / note",
+    "loadComments": "Load queue",
+    "loading": "Loading …",
+    "noComments": "No comments in this queue.",
+    "approveComment": "Approve",
+    "hideComment": "Hide",
+    "banUser": "Ban user",
+    "moderationError": "Moderation request failed."
   }
 }

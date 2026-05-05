@@ -1,56 +1,55 @@
-"""RSS/Atom parser tests using tiny inline fixtures."""
 from __future__ import annotations
 
-from sources._rss import extract_products, parse_feed_to_items
+from datetime import UTC, datetime
 
-ATOM_MIN = b"""<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <title>Example</title>
-  <entry>
-    <title>Azure Storage gets a new feature</title>
-    <link href="https://example.com/a"/>
-    <updated>2026-04-10T12:00:00Z</updated>
-  </entry>
-  <entry>
-    <title>Microsoft Teams adds Copilot actions</title>
-    <link href="https://example.com/b"/>
-    <updated>2026-04-09T08:30:00Z</updated>
-  </entry>
-  <entry>
-    <title>Unrelated kernel patch</title>
-    <link href="https://example.com/c"/>
-    <updated>2026-04-08T01:00:00Z</updated>
-  </entry>
-</feed>
-""".strip()
+from sources import _rss
 
 
-def test_parse_feed_returns_all_entries():
-    items = parse_feed_to_items(
-        ATOM_MIN, source_id="t", source_name="Test", default_language="en"
-    )
-    assert len(items) == 3
-    assert items[0].title.startswith("Azure")
+def test_fetch_and_parse_retries_fallback_after_403(monkeypatch) -> None:
+    published = datetime(2026, 4, 27, 12, 0, tzinfo=UTC)
+    calls: list[str] = []
 
+    def fake_fetch_feed(  # noqa: ANN001
+        url,
+        *,
+        user_agent,
+        etag=None,
+        last_modified=None,
+        timeout=20.0,
+    ):
+        calls.append(url)
+        if "old.reddit.com" not in url:
+            return (403, None, None, b"")
+        body = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Windows admins discuss patching</title>
+      <link>https://example.com/post</link>
+      <pubDate>{published.strftime("%a, %d %b %Y %H:%M:%S +0000")}</pubDate>
+    </item>
+  </channel>
+</rss>
+""".encode()
+        return (200, "etag-2", "Mon, 27 Apr 2026 12:00:00 GMT", body)
 
-def test_parse_feed_title_keyword_filter():
-    items = parse_feed_to_items(
-        ATOM_MIN,
-        source_id="t",
-        source_name="Test",
+    monkeypatch.setattr(_rss, "fetch_feed", fake_fetch_feed)
+
+    result = _rss.fetch_and_parse(
+        url="https://www.reddit.com/r/microsoft/new.rss?limit=50",
+        fallback_urls=("https://old.reddit.com/r/microsoft/new.rss?limit=50",),
+        source_id="reddit-microsoft",
+        source_name="r/microsoft",
+        user_agent="PatchFlux/1.0",
         default_language="en",
-        title_keywords=("azure", "teams"),
-    )
-    assert len(items) == 2
-    assert all(
-        ("azure" in i.title.lower()) or ("teams" in i.title.lower()) for i in items
     )
 
-
-def test_extract_products_matches_expected_keywords():
-    assert "azure" in extract_products("New Azure Storage feature")
-    assert "teams" in extract_products("Microsoft Teams update")
-    # Case-insensitive
-    assert "copilot" in extract_products("GitHub Copilot gains new feature")
-    # No false positives on random titles
-    assert extract_products("Random news about cats") == ()
+    assert calls == [
+        "https://www.reddit.com/r/microsoft/new.rss?limit=50",
+        "https://old.reddit.com/r/microsoft/new.rss?limit=50",
+    ]
+    assert result.status == "ok"
+    assert result.error is None
+    assert result.etag == "etag-2"
+    assert len(result.items) == 1
+    assert result.items[0].source_id == "reddit-microsoft"

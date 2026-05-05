@@ -12,6 +12,8 @@ export interface NewsItem {
   language: "de" | "en";
   priority: 0 | 1 | 2;
   topics: string[];
+  helpfulVotes?: number;
+  hotScore?: number;
 }
 
 export interface NewsResponse {
@@ -27,7 +29,18 @@ export interface HotResponse {
 
 export interface SourceHealth {
   sourceId: string;
+  sourceName?: string;
+  state:
+    | "ok"
+    | "not_modified"
+    | "error"
+    | "stale"
+    | "timer_not_firing"
+    | "disabled"
+    | "never";
+  lastAttemptAt: string | null;
   lastFetchAt: string | null;
+  lastSuccessAt: string | null;
   lastStatus: string | null;
   lastError: string | null;
   itemsLastRun?: number;
@@ -60,11 +73,86 @@ export interface HealthResponse {
   status: "ok" | "degraded";
   storage: boolean;
   sourcesStale: string[];
+  sourceCounts: {
+    disabled: number;
+    error: number;
+    never: number;
+    notModified: number;
+    ok: number;
+    stale: number;
+    timerNotFiring: number;
+  };
+  sourcesByState: {
+    disabled: string[];
+    error: string[];
+    never: string[];
+    notModified: string[];
+    ok: string[];
+    stale: string[];
+    timerNotFiring: string[];
+  };
   checkedAt: string;
 }
 
 export interface IngestResponse {
   written: Record<string, number>;
+}
+
+export interface VisitCountsResponse {
+  today: number;
+  allTime: number;
+  dayKey: string;
+  timezone: string;
+}
+
+export interface CommentItem {
+  id: string;
+  newsItemId: string;
+  displayName: string;
+  body: string;
+  status: "visible" | "pending" | "hidden" | "rejected" | "flagged";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCommentItem extends CommentItem {
+  userId: string;
+  commentPartitionKey: string;
+  commentRowKey: string;
+  moderationReason: string | null;
+  reportCount: number;
+}
+
+export interface CommentsResponse {
+  comments: CommentItem[];
+  count: number;
+}
+
+export interface CommentCountsResponse {
+  counts: Record<string, number>;
+}
+
+export interface VoteState {
+  count: number;
+  votedByMe: boolean;
+}
+
+export interface VotesResponse {
+  votes: Record<string, VoteState>;
+}
+
+export interface AdminCommentsResponse {
+  comments: AdminCommentItem[];
+  count: number;
+  status: AdminCommentItem["status"];
+}
+
+export interface CreateCommentInput {
+  newsItemId: string;
+  displayName: string;
+  body: string;
+  userId: string;
+  userSecret: string;
 }
 
 export interface NewsFilters {
@@ -79,6 +167,8 @@ export interface NewsFilters {
   minPriority?: 1 | 2;
   hot?: boolean;
   topics?: string[];
+  excludeTopics?: string[];
+  sort?: "hot";
   /** true = Community tab (tier 3 only); false = News & Blogs (tier 1+2 only) */
   community?: boolean;
 }
@@ -119,6 +209,9 @@ function buildNewsQuery(params: NewsFilters): URLSearchParams {
   if (params.hot) search.set("hot", "1");
   if (params.topics && params.topics.length > 0)
     search.set("topics", params.topics.join(","));
+  if (params.excludeTopics && params.excludeTopics.length > 0)
+    search.set("exclude_topics", params.excludeTopics.join(","));
+  if (params.sort) search.set("sort", params.sort);
   if (params.community !== undefined)
     search.set("community", params.community ? "1" : "0");
   return search;
@@ -172,4 +265,127 @@ export async function triggerIngest(
     throw new Error(`Ingest trigger failed with ${response.status}`);
   }
   return (await response.json()) as IngestResponse;
+}
+
+export function fetchVisitCounts(): Promise<VisitCountsResponse> {
+  return request<VisitCountsResponse>("/visits", new URLSearchParams());
+}
+
+export async function trackVisit(): Promise<VisitCountsResponse> {
+  const response = await fetch(joinUrl("/visits/track", new URLSearchParams()), {
+    method: "POST",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`Visit tracking failed with ${response.status}`);
+  }
+  return (await response.json()) as VisitCountsResponse;
+}
+
+export function fetchComments(newsItemId: string): Promise<CommentsResponse> {
+  return request<CommentsResponse>(
+    "/comments",
+    new URLSearchParams({ item: newsItemId }),
+  );
+}
+
+export function fetchCommentCounts(newsItemIds: string[]): Promise<CommentCountsResponse> {
+  const uniqueIds = Array.from(new Set(newsItemIds)).filter(Boolean);
+  if (uniqueIds.length === 0) {
+    return Promise.resolve({ counts: {} });
+  }
+  return request<CommentCountsResponse>(
+    "/comments/counts",
+    new URLSearchParams({ items: uniqueIds.join(",") }),
+  );
+}
+
+export function fetchVotes(newsItemIds: string[], userId?: string): Promise<VotesResponse> {
+  const uniqueIds = Array.from(new Set(newsItemIds)).filter(Boolean);
+  if (uniqueIds.length === 0) {
+    return Promise.resolve({ votes: {} });
+  }
+  const search = new URLSearchParams({ items: uniqueIds.join(",") });
+  if (userId) search.set("userId", userId);
+  return request<VotesResponse>("/votes", search);
+}
+
+export async function toggleVote(input: {
+  newsItemId: string;
+  userId: string;
+  userSecret: string;
+}): Promise<{ newsItemId: string; count: number; votedByMe: boolean }> {
+  const response = await fetch(joinUrl("/votes", new URLSearchParams()), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Vote failed with ${response.status}`);
+  }
+  return (await response.json()) as {
+    newsItemId: string;
+    count: number;
+    votedByMe: boolean;
+  };
+}
+
+export async function createComment(input: CreateCommentInput): Promise<{
+  comment: CommentItem;
+  status: CommentItem["status"];
+}> {
+  const response = await fetch(joinUrl("/comments", new URLSearchParams()), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Comment failed with ${response.status}`);
+  }
+  return (await response.json()) as { comment: CommentItem; status: CommentItem["status"] };
+}
+
+export function fetchModerationComments(
+  adminKey: string,
+  status: AdminCommentItem["status"] = "pending",
+): Promise<AdminCommentsResponse> {
+  return request<AdminCommentsResponse>(
+    "/comments/moderation",
+    new URLSearchParams({ code: adminKey, status }),
+  );
+}
+
+export async function moderateComment(
+  adminKey: string,
+  input: {
+    commentPartitionKey: string;
+    commentRowKey: string;
+    action: "approve" | "hide" | "flag" | "reject" | "ban_user";
+    reason?: string;
+  },
+): Promise<{ comment: AdminCommentItem; action: string }> {
+  const response = await fetch(
+    joinUrl("/comments/moderate", new URLSearchParams({ code: adminKey })),
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Moderation failed with ${response.status}`);
+  }
+  return (await response.json()) as { comment: AdminCommentItem; action: string };
 }

@@ -28,6 +28,10 @@ class RedditSysadminAdapter(SourceAdapter):
         "https://www.reddit.com/r/sysadmin/search.rss"
         "?q=microsoft+OR+windows+OR+azure&sort=new&restrict_sr=1&limit=50"
     )
+    fallback_urls = (
+        "https://old.reddit.com/r/sysadmin/search.rss"
+        "?q=microsoft+OR+windows+OR+azure&sort=new&restrict_sr=1&limit=50",
+    )
     title_keywords: tuple[str, ...] = MICROSOFT_TITLE_KEYWORDS
 
     def fetch(
@@ -46,4 +50,5 @@ class RedditSysadminAdapter(SourceAdapter):
             last_modified=last_modified,
             default_language="en",
             title_keywords=self.title_keywords,
+            fallback_urls=self.fallback_urls,
         )

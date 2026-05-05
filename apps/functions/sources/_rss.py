@@ -215,6 +215,7 @@ def fetch_and_parse(
     last_modified: str | None = None,
     default_language: str = "en",
     title_keywords: tuple[str, ...] | None = None,
+    fallback_urls: tuple[str, ...] = (),
 ) -> SourceFetchResult:
     try:
         status, new_etag, new_last_modified, body = fetch_feed(
@@ -231,6 +232,23 @@ def fetch_and_parse(
             last_modified=last_modified,
             status="not_modified",
         )
+    if status == 403 and fallback_urls:
+        for fallback_url in fallback_urls:
+            try:
+                status, new_etag, new_last_modified, body = fetch_feed(
+                    fallback_url,
+                    user_agent=user_agent,
+                    etag=etag,
+                    last_modified=last_modified,
+                )
+            except httpx.HTTPError as exc:
+                return SourceFetchResult(
+                    source_id=source_id,
+                    status="error",
+                    error=str(exc),
+                )
+            if status < 400 or status == 304:
+                break
     if status >= 400:
         return SourceFetchResult(
             source_id=source_id,

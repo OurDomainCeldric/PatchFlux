@@ -45,7 +45,7 @@ jobs:
 
       - name: Build (static export)
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://func-omlorsnews-prod.azurewebsites.net/api
+          NEXT_PUBLIC_API_BASE_URL: /api
           NEXT_PUBLIC_SITE_URL: https://patchflux.de
         run: npm run build
 
