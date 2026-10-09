@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import json
 import logging
 import uuid
@@ -109,6 +110,7 @@ class NewsStore:
     comment_rate_limit_table: str = "CommentRateLimits"
     article_vote_table: str = "ArticleVotes"
     article_user_vote_table: str = "ArticleUserVotes"
+    roadmap_table: str = "RoadmapItems"
 
     def _service(self) -> TableServiceClient:
         return TableServiceClient.from_connection_string(self.connection_string)
@@ -125,6 +127,7 @@ class NewsStore:
             self.comment_rate_limit_table,
             self.article_vote_table,
             self.article_user_vote_table,
+            self.roadmap_table,
         ):
             try:
                 svc.create_table(name)
@@ -166,6 +169,44 @@ class NewsStore:
         )
 
     # ---- NewsItems ------------------------------------------------------
+
+    def index_roadmap(self, items: Iterable[NewsItem]) -> int:
+        """Keep one current metadata record per canonical feature URL."""
+        written = 0
+        now = datetime.now(UTC)
+        with TableClient.from_connection_string(self.connection_string, self.roadmap_table) as client:
+            existing = {entity["RowKey"]: entity for entity in client.query_entities("PartitionKey eq 'features'")}
+            operations = []
+            for item in items:
+                if item.source_id != "m365-roadmap":
+                    continue
+                url = str(item.canonical_url)
+                key = hashlib.sha256(url.encode()).hexdigest()
+                metadata = {
+                    "Title": item.title, "CanonicalUrl": url,
+                    "Products": ",".join(item.products), "Tags": ",".join(item.tags),
+                    "PublishedAt": item.published_at,
+                }
+                fingerprint = hashlib.sha256(json.dumps(metadata, sort_keys=True, default=str).encode()).hexdigest()
+                previous = existing.get(key, {})
+                if previous.get("Fingerprint") == fingerprint:
+                    continue
+                operations.append(("upsert", {
+                    "PartitionKey": "features", "RowKey": key, **metadata,
+                    "Fingerprint": fingerprint, "ChangedAt": now,
+                    "FirstSeenAt": previous.get("FirstSeenAt", now),
+                }, {"mode": UpdateMode.REPLACE}))
+                if len(operations) == 100:
+                    client.submit_transaction(operations)
+                    operations = []
+                written += 1
+            if operations:
+                client.submit_transaction(operations)
+        return written
+
+    def roadmap_items(self) -> list[dict]:
+        with TableClient.from_connection_string(self.connection_string, self.roadmap_table) as client:
+            return list(client.query_entities("PartitionKey eq 'features'"))
 
     def upsert_many(self, items: Iterable[NewsItem]) -> int:
         """Upsert a batch of items. Returns number of items written."""

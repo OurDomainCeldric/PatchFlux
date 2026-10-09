@@ -71,6 +71,20 @@
     "hotTicker": "Ticker mit Top-News",
     "contentLanguage": "Sprache des Artikels"
   },
+  "roadmap": {
+    "back": "Zurück zu den News",
+    "intro": "Microsoft 365 auf einen Blick. Wähle deine Produkte und entdecke zuletzt erfasste Änderungen.",
+    "search": "Titel oder Feature-ID suchen",
+    "product": "Produkt", "status": "Status",
+    "allProducts": "Alle Produkte", "allStatuses": "Alle Status",
+    "development": "In Entwicklung", "rollout": "Im Rollout", "launched": "Verfügbar", "unknown": "Status unbekannt",
+    "changesOnly": "Seit letztem Besuch geändert", "changed": "Neu für dich",
+    "observed": "Änderung erfasst am",
+    "count": "{count} Features", "more": "Weitere 30 anzeigen",
+    "empty": "Keine Features passen zu dieser Auswahl.",
+    "loading": "Roadmap wird geladen …", "error": "Roadmap konnte nicht geladen werden. Bitte lade die Seite erneut.",
+    "note": "Änderungen werden seit Aufbau unseres Index erfasst. Der Status stammt aus dem Microsoft-Feed und garantiert keine Verfügbarkeit in deinem Tenant. Details findest du beim Original."
+  },
   "votes": {
     "helpful": "Hilfreich",
     "tierUseful": "Nützlich",

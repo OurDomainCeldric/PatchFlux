@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -64,6 +65,9 @@ export function FeedTabs({ pathname }: FeedTabsProps) {
           </button>
         );
       })}
+      <Link href={`${pathname}/roadmap`} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-500 hover:text-indigo-600">
+        M365 Roadmap
+      </Link>
     </nav>
   );
 }

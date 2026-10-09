@@ -71,6 +71,20 @@
     "hotTicker": "Hot news ticker",
     "contentLanguage": "Content language"
   },
+  "roadmap": {
+    "back": "Back to news",
+    "intro": "Microsoft 365 at a glance. Choose your products and explore recently observed changes.",
+    "search": "Search title or feature ID",
+    "product": "Product", "status": "Status",
+    "allProducts": "All products", "allStatuses": "All statuses",
+    "development": "In development", "rollout": "Rolling out", "launched": "Launched", "unknown": "Unknown status",
+    "changesOnly": "Changed since last visit", "changed": "New for you",
+    "observed": "Change observed on",
+    "count": "{count} features", "more": "Show 30 more",
+    "empty": "No features match your selection.",
+    "loading": "Loading roadmap …", "error": "Could not load the roadmap. Please reload the page.",
+    "note": "Changes are tracked from the creation of our index. Status comes from Microsoft's feed and does not guarantee availability in your tenant. Follow the original link for details."
+  },
   "votes": {
     "helpful": "Helpful",
     "tierUseful": "Useful",

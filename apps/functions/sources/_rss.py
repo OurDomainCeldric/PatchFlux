@@ -195,7 +195,13 @@ def parse_feed_to_items(
                 author=author,
                 canonical_url=link,
                 products=extract_products(title),
-                tags=(),
+                tags=tuple(
+                    str(tag.get("term", "")).lower()
+                    for tag in entry.get("tags", [])
+                    if source_id == "m365-roadmap"
+                    and str(tag.get("term", "")).lower()
+                    in {"in development", "rolling out", "launched"}
+                ),
                 language=language,
             )
         except Exception as exc:  # noqa: BLE001 — log & skip malformed entries

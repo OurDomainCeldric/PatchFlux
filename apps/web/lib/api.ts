@@ -267,6 +267,20 @@ export async function triggerIngest(
   return (await response.json()) as IngestResponse;
 }
 
+export interface RoadmapItem {
+  id: string;
+  title: string;
+  url: string;
+  products: string[];
+  status: "in development" | "rolling out" | "launched" | "unknown";
+  changedAt: string;
+  firstSeenAt: string;
+}
+
+export function fetchRoadmap(): Promise<{ items: RoadmapItem[]; count: number }> {
+  return request("/roadmap", new URLSearchParams());
+}
+
 export function fetchVisitCounts(): Promise<VisitCountsResponse> {
   return request<VisitCountsResponse>("/visits", new URLSearchParams());
 }

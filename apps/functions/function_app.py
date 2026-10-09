@@ -319,6 +319,10 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
         previous = store.get_source_health(adapter.source_id) or {}
         etag = previous.get("ETag") or None
         last_modified = previous.get("LastModified") or None
+        if adapter.source_id == "m365-roadmap" and not store.roadmap_items():
+            # The new index needs a full first snapshot, even if news was already fetched.
+            etag = None
+            last_modified = None
 
         log.info("Fetching %s", adapter.source_id)
         start = time.monotonic()
@@ -345,6 +349,8 @@ def _run_ingest(source_ids: Iterable[str] | None = None) -> dict:
 
         written = 0
         if result.items:
+            if adapter.source_id == "m365-roadmap":
+                store.index_roadmap(result.items)
             items_to_write = result.items
             if gate is not None:
                 items_to_write = gate.process(
@@ -417,6 +423,28 @@ def ingest_timer_low(timer: func.TimerRequest) -> None:
 # ---- HTTP: admin ingest (FUNCTION-level key) --------------------------------
 
 
+@app.function_name(name="api_roadmap")
+@app.route(route="roadmap", methods=["GET"])
+def api_roadmap(req: func.HttpRequest) -> func.HttpResponse:
+    """Current roadmap metadata, one row per feature; no publisher descriptions."""
+    from urllib.parse import parse_qs, urlsplit
+
+    items = []
+    for entity in _store().roadmap_items():
+        url = str(entity["CanonicalUrl"])
+        tags = str(entity.get("Tags") or "").split(",")
+        status = next((tag for tag in tags if tag in {"in development", "rolling out", "launched"}), "unknown")
+        items.append({
+            "id": parse_qs(urlsplit(url).query).get("id", [entity["RowKey"]])[0],
+            "title": entity["Title"], "url": url, "status": status,
+            "products": [p for p in str(entity.get("Products") or "").split(",") if p],
+            "changedAt": entity["ChangedAt"].isoformat(),
+            "firstSeenAt": entity["FirstSeenAt"].isoformat(),
+        })
+    items.sort(key=lambda item: (item["changedAt"], item["id"]), reverse=True)
+    return _json_response({"items": items, "count": len(items)}, cache_seconds=60)
+
+
 @app.function_name(name="ingest_http")
 @app.route(route="ingest", methods=["POST", "GET"], auth_level=func.AuthLevel.FUNCTION)
 def ingest_http(req: func.HttpRequest) -> func.HttpResponse:
@@ -486,7 +514,7 @@ def _visit_day_key(now: datetime | None = None) -> str:
 
 def _comment_secret_hash(user_id: str, secret: str) -> str:
     # The browser-local secret is high entropy; hashing avoids storing it in clear text.
-    return hashlib.sha256(f"{user_id}:{secret}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{user_id}:{secret}".encode()).hexdigest()
 
 
 def _constant_time_equal(left: object, right: str) -> bool:
