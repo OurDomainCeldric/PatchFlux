@@ -18,8 +18,8 @@ HTTP routes
 Timer triggers
 --------------
 - ``ingest_timer_high``  – every 30 min: MSRC (security)
-- ``ingest_timer_mid``   – every 3 h: Heise, Borns, Tech Community, Windows blogs
-- ``ingest_timer_low``   – daily 05:00 UTC: M365 Roadmap, Azure Updates
+- ``ingest_timer_mid``   – hourly: Heise, Borns, Tech Community, Windows blogs
+- ``ingest_timer_low``   – every 6 h: M365 Roadmap, Azure Updates
 """
 from __future__ import annotations
 
@@ -397,18 +397,18 @@ def ingest_timer_high(timer: func.TimerRequest) -> None:
 
 
 @app.function_name(name="ingest_timer_mid")
-@app.schedule(schedule="0 15 */3 * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
+@app.schedule(schedule="0 15 * * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
 def ingest_timer_mid(timer: func.TimerRequest) -> None:
-    """Medium-frequency fetch for blogs & news every 3 h (offset :15)."""
+    """Hourly fetch for blogs & news (offset :15)."""
     log.info("ingest_timer_mid fired (past_due=%s)", timer.past_due)
     result = _run_ingest(MID_FREQ_SOURCES)
     log.info("ingest_timer_mid done: %s", result)
 
 
 @app.function_name(name="ingest_timer_low")
-@app.schedule(schedule="0 0 5 * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
+@app.schedule(schedule="0 5 */6 * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
 def ingest_timer_low(timer: func.TimerRequest) -> None:
-    """Daily low-frequency fetch for roadmap & update feeds at 05:00 UTC."""
+    """Fetch roadmap & update feeds every six hours (offset :05 UTC)."""
     log.info("ingest_timer_low fired (past_due=%s)", timer.past_due)
     result = _run_ingest(LOW_FREQ_SOURCES)
     log.info("ingest_timer_low done: %s", result)

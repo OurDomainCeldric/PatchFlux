@@ -51,8 +51,8 @@ The main entry point is [apps/functions/function_app.py](/F:/GitRepos/PatchFlux/
 ### Ingest scheduling
 
 - `ingest_timer_high`: every 30 minutes for `msrc` and `cisa-kev`
-- `ingest_timer_mid`: every 3 hours for blogs and news feeds
-- `ingest_timer_low`: daily at `05:00 UTC` for `m365-roadmap` and `azure-updates`
+- `ingest_timer_mid`: hourly at minute `15` for blogs and news feeds
+- `ingest_timer_low`: every 6 hours at minute `05` UTC for `m365-roadmap` and `azure-updates`
 - `ingest_http`: manual ingest trigger protected by Function auth
 
 ### Public read endpoints
