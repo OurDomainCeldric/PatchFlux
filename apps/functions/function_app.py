@@ -440,8 +440,9 @@ def api_roadmap(req: func.HttpRequest) -> func.HttpResponse:
             "products": [p for p in str(entity.get("Products") or "").split(",") if p],
             "changedAt": entity["ChangedAt"].isoformat(),
             "firstSeenAt": entity["FirstSeenAt"].isoformat(),
+            "publishedAt": entity["PublishedAt"].isoformat(),
         })
-    items.sort(key=lambda item: (item["changedAt"], item["id"]), reverse=True)
+    items.sort(key=lambda item: (item["changedAt"], item["publishedAt"], item["id"]), reverse=True)
     return _json_response({"items": items, "count": len(items)}, cache_seconds=60)
 
 
