@@ -56,7 +56,7 @@ export function RoadmapExplorer() {
         <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("intro")}</p>
       </header>
       <div className="mb-5 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-        <input aria-label={t("search")} placeholder={t("search")} value={query} onChange={(event) => { setQuery(event.target.value); setLimit(30); }} className={`${controlClass} min-w-0 flex-1`} />
+        <input aria-label={t("search")} placeholder={t("search")} value={query} onChange={(event) => { setQuery(event.target.value); setLimit(30); }} className={`${controlClass} min-w-0 w-full sm:w-auto sm:flex-1`} />
         <select aria-label={t("product")} value={product} onChange={(event) => {
           setProduct(event.target.value); setLimit(30);
           try { localStorage.setItem(PREFERENCE_KEY, event.target.value); } catch { /* optional */ }
