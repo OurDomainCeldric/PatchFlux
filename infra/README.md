@@ -17,10 +17,10 @@ All Azure resources live in a single resource group and are defined in [main.bic
 | Application Insights | workspace-based | Logs / failures / traces |
 | App Service Plan | `Y1` (Consumption) | Hosts the Functions app |
 | Function App (Linux, Python 3.11) | Consumption | `ingest` timer + `api` HTTP triggers |
-| Static Web App | `Free` | Hosts the Next.js frontend and proxies `/api/*` to the Function App |
+| Static Web App | `Standard` | Hosts the Next.js frontend and links the Function App so the public domain can serve `/api/*` again |
 | Azure OpenAI account + `gpt-4o-mini` deployment (optional, `deployAiGate`) | `S0` / `GlobalStandard` | Relevance gate that classifies titles pre-ingest; spend is capped in code at `$aiMaxMonthlyUsd`/month (default **$5**). |
 
-Expected cost on MVP load: **under 1 EUR/month** infra + **up to `aiMaxMonthlyUsd` USD/month** for AI (hard-capped by `BudgetTracker`).
+Expected cost on MVP load: roughly **8 EUR/month** for the Static Web App Standard plan, plus the existing low-cost Consumption resources and **up to `aiMaxMonthlyUsd` USD/month** for AI (hard-capped by `BudgetTracker`).
 
 ## AI relevance gate — prerequisites
 

@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const a = document.createElement('a');
       a.href = item.url;
       a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+      a.rel = 'noopener nofollow';
       
       const badge = document.createElement('span');
       badge.className = 'hot-badge';

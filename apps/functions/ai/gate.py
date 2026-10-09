@@ -38,6 +38,10 @@ from .pricing import cost_usd
 
 log = logging.getLogger(__name__)
 
+# Some feeds are already deterministically in scope and high-volume enough
+# that per-item LLM classification is pure latency and timeout risk.
+_SOURCE_BYPASS_IDS = frozenset({"msrc", "cisa-kev"})
+
 
 _SYSTEM_PROMPT = (
     "You are a strict relevance classifier for PatchFlux, a Microsoft-focused "
@@ -142,6 +146,13 @@ class AIRelevanceGate:
         """Classify a batch. Returns the kept subset (possibly enriched)."""
         if not items:
             return []
+        if source_id in _SOURCE_BYPASS_IDS:
+            stats.bypassed += len(items)
+            for _ in items:
+                self._bump(stats, source_id, "bypassed")
+            if stats.final_budget is None:
+                stats.final_budget = self._budget.read()
+            return items
 
         kept: list[NewsItem] = []
         disabled_for_run = False

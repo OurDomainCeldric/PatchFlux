@@ -22,6 +22,7 @@ export async function SiteHeader() {
           </div>
         </div>
         <nav className="flex items-center gap-3 text-sm" aria-label="Primary">
+          <Link href={`/${currentLocale}/roadmap`} className="text-xs font-medium text-slate-500 hover:text-indigo-600">Roadmap</Link>
           <AdminNavLink href={`/${currentLocale}/admin`} label={t("nav.admin")} />
         </nav>
       </div>

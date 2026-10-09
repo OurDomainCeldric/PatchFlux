@@ -26,8 +26,10 @@ Next.js Frontend on Azure Static Web Apps
 - **Frontend:** Next.js 15 (App Router, Static Export) + TypeScript + Tailwind + shadcn/ui, i18n DE/EN via `next-intl`
 - **Backend:** Azure Functions, Python 3.11 (v2 programming model)
 - **Storage:** Azure Table Storage
-- **Hosting:** Azure Static Web Apps (Free) + Azure Functions (Consumption)
+- **Hosting:** Azure Static Web Apps (Standard) + Azure Functions (Consumption)
 - **Region:** `westeurope` — cheapest DSGVO-compliant EU region
+
+For a contributor-oriented system walkthrough, see [docs/architecture.md](docs/architecture.md). For prioritized follow-up work, see [docs/backlog.md](docs/backlog.md).
 
 ## Monorepo layout
 
@@ -62,6 +64,8 @@ func start
 - **Subscription:** stored as the `AZURE_SUBSCRIPTION_ID` GitHub Actions secret; export `AZURE_SUBSCRIPTION_ID` locally for manual `az` runs.
 - **Resource Group:** `RG-NewsBot`
 - **Region:** `westeurope`
+
+Current live note: as of April 27, 2026, `patchflux.de/api/*` is working again via the linked Azure Function App on the Static Web App Standard plan.
 
 See [infra/README.md](infra/README.md) for Bicep deployment.
 

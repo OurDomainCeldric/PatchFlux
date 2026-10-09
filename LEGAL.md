@@ -18,6 +18,7 @@ This document defines **non-negotiable legal guardrails** enforced in the code a
 - Author (if provided by the feed)
 - Canonical URL (required — used as backlink)
 - Product/tag labels derived locally from keyword matching on the title
+- For the Microsoft 365 roadmap: feature ID and development-status categories from official RSS, plus locally recorded first-seen and metadata-change timestamps. No feature descriptions are stored.
 - Ingestion timestamp and a deduplication hash
 
 ## 3. Storage — what MUST NOT be stored

@@ -17,12 +17,22 @@ export const TOPICS = [
 ] as const;
 export type Topic = (typeof TOPICS)[number];
 
-/** Default topic selection: everything except CVEs. */
-const DEFAULT_TOPICS: readonly Topic[] = TOPICS.filter((t) => t !== "cve");
+/** Default topic selection for the main feed: all editorial topics except CVEs. */
+export const DEFAULT_TOPICS: readonly Topic[] = TOPICS.filter(
+  (t) => t !== "community" && t !== "cve",
+);
+export const NEWS_TOPICS: readonly Topic[] = TOPICS.filter(
+  (t) => t !== "community",
+);
 
-function isDefaultTopicSet(s: Set<Topic>): boolean {
+export function isDefaultTopicSet(s: Set<Topic>): boolean {
   if (s.size !== DEFAULT_TOPICS.length) return false;
   return DEFAULT_TOPICS.every((t) => s.has(t));
+}
+
+export function areAllNewsTopicsSelected(s: Set<Topic>): boolean {
+  if (s.size !== NEWS_TOPICS.length) return false;
+  return NEWS_TOPICS.every((t) => s.has(t));
 }
 
 const SINCE_OPTIONS: { value: string; labelKey: string }[] = [
@@ -49,7 +59,7 @@ export interface FilterState {
 }
 
 function parseTopics(raw: string | null): Set<Topic> {
-  // Absent param means the DEFAULT selection (CVE off, others on).
+  // Absent param means the DEFAULT selection.
   if (raw === null) return new Set<Topic>(DEFAULT_TOPICS);
   const known = new Set<Topic>(TOPICS);
   return new Set(
@@ -228,8 +238,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
   };
 
   const setAllTopics = () => {
-    // Explicitly select every topic, including CVE.
-    navigate({ ...current, topics: new Set<Topic>(TOPICS) });
+    navigate({ ...current, topics: new Set<Topic>(NEWS_TOPICS) });
   };
 
   /** Toggle a single-select string field: clicking the active value clears it. */
@@ -259,12 +268,12 @@ export function FilterBar({ pathname }: FilterBarProps) {
       q: "",
       deduped: false,
       onlyHot: false,
-      // Reset goes back to the default topic selection (CVE off).
+      // Reset goes back to the default topic selection.
       topics: new Set<Topic>(DEFAULT_TOPICS),
     });
   };
 
-  const allTopicsOn = current.topics.size === TOPICS.length;
+  const allTopicsOn = current.topics.size === NEWS_TOPICS.length;
   const advancedCount = advancedActiveCount(current);
 
   return (
@@ -383,7 +392,7 @@ export function FilterBar({ pathname }: FilterBarProps) {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {TOPICS.map((topic) => {
+                    {NEWS_TOPICS.map((topic) => {
                       const active = current.topics.has(topic);
                       const count = topicCounts[topic];
                       return (
